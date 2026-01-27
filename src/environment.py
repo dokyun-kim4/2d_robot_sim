@@ -6,7 +6,7 @@ The Environment class models the world that the robots navigate in. The world is
 Critically, the environment tracks the robot's state. In this case, the robot's state is a vector that includes three state variables: x position, y position, and heading.
 """
 
-from utils import Position, Pose, Bounds, Landmark, BearingRange
+from src.utils import Position, Pose, Bounds, Landmark, BearingRange
 
 
 class Environment:
@@ -39,21 +39,12 @@ class Environment:
             landmarks: a list of landmarks
             robot_starting_pose: the initial position and heading of the robot
         """
-        # TODO: set the dimensions property to the parameter value
-        self.DIMENSIONS = None
-
-        # TODO: set the timestep size property to the parameter value
-        self.DT = None
-
-        # TODO: set the current time to zero
-        self.time = None
-
-        # TODO: set the obstacles and landmarks properties to the parameter lists
-        self.OBSTACLES = None
-        self.LANDMARKS = None
-
-        # TODO: set the robot pose property to the parameter value
-        self.robot_pose = None
+        self.DIMENSIONS = dimensions
+        self.DT = dt
+        self.time = 0
+        self.OBSTACLES = obstacles
+        self.LANDMARKS = landmarks
+        self.robot_pose = robot_starting_pose
 
     def robot_step(self, dx: float, dy: float, dtheta: float):
         """
@@ -67,8 +58,11 @@ class Environment:
         Returns:
             Nothing, but update the robot_pose property at the end
         """
-        # TODO: fill in the function
-        pass
+        dx,dy = self.is_valid_motion(dx,dy)
+
+        self.robot_pose.pos.x += dx
+        self.robot_pose.pos.y += dy
+        self.robot_pose.theta += dtheta
 
     def is_valid_motion(self, dx: float, dy: float):
         """
@@ -82,8 +76,10 @@ class Environment:
             dx: change in x position that should be executed
             dy: change in y position that should be executed
         """
-        # TODO: fill in the function
-        pass
+
+
+        return dx,dy
+        
 
     def is_valid_position(self, position: Position):
         """
@@ -95,8 +91,13 @@ class Environment:
         Returns:
             true if the position is valid and false otherwise
         """
-        # TODO: fill in the function
-        pass
+        # check if within world bounds
+        in_world = self.DIMENSIONS.within_bounds(position)
+
+        # check if inside obstacles
+        in_obstacle = any([obs.within_bounds(position) for obs in self.OBSTACLES])
+        
+        return in_world and not in_obstacle
 
     def get_robot_pose(self):
         """
