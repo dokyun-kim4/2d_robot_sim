@@ -3,7 +3,8 @@ A simulated robotic agent with teleoperation and sensing capabilities.
 
 The Robot class models the robotic agent that explores the world. The robot is remote-controlled by angular and linear velocity commands read from an external file. The robot can execute motor commands to move, and can sense both externally (GPS, landmarks, obstacles) and internally (odometry, IMU).
 """
-
+import math
+import random
 from environment import Environment
 from sensors import SensorInterface
 
@@ -24,10 +25,17 @@ class Robot:
         Args:
             env: the environment this robot is operating in
         """
-        # TODO: set the environment property to the parameter value
-        self.env = None
-        # TODO: initialize the sensors property as an empty list
+        # Save cmd vel and actual vel for spoofed sensor data
+        self.latest_lin_vel_cmd = 0.0
+        self.latest_ang_vel_cmd = 0.0
+        self.latest_lin_vel_actual = 0.0
+        self.latest_ang_vel_actual =  0.0
+
+
+        self.env = env
         self.sensors = []
+        self.MTR_NOISE_LINEAR = 0.05
+        self.MTR_NOISE_ANGULAR = 0.03
 
     def robot_step_differential(self, lin_vel: float, ang_vel: float):
         """
@@ -42,7 +50,14 @@ class Robot:
             dy: change in y position
             d-theta: change in heading
         """
-        # TODO: fill in the function
+        # If no angular velocity
+        if ang_vel == 0:
+            dx = self.env.DT * lin_vel * math.cos(self.env.robot_pose.theta)
+            dy = self.env.DT * lin_vel * math.sin(self.env.robot_pose.theta)
+        else:
+        # Robot drives in arc, find radius via r = v/w
+            r = lin_vel/ang_vel
+            # TODO: finish implementing arc
         pass
 
     def robot_step_translational(self, x_vel: float, y_vel: float, ang_vel: float):
@@ -59,8 +74,17 @@ class Robot:
             dy: change in y position
             d-theta: change in heading
         """
-        # TODO: fill in the function
-        pass
+        # Simulate noise in motors
+        x_vel *= 1 + random.gauss(0, self.MTR_NOISE_LINEAR)
+        y_vel *= 1 + random.gauss(0, self.MTR_NOISE_LINEAR)
+        ang_vel *= 1 + random.gauss(0, self.MTR_NOISE_ANGULAR)
+
+        dx = x_vel * self.env.DT
+        dy = y_vel * self.env.DT
+        dtheta = ang_vel * self.env.DT
+        self.env.robot_step(dx,dy,dtheta)
+
+        return dx, dy, dtheta
 
     def take_sensor_measurements(self):
         """
