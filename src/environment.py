@@ -65,7 +65,8 @@ class Environment:
 
         self.robot_pose.pos.x += dx
         self.robot_pose.pos.y += dy
-        self.robot_pose.theta += dtheta
+        new_theta = self.robot_pose.theta = dtheta
+        self.robot_pose.theta = (new_theta + math.pi) % (2*math.pi) - math.pi
 
         self.time += self.DT
 
@@ -122,7 +123,8 @@ class Environment:
             y_diff = lm.pos.y - self.robot_pose.pos.y
             range = math.sqrt(x_diff**2 + y_diff**2)
             bearing = math.atan2(y_diff, x_diff) - self.robot_pose.theta
-            # TODO: Figure this out
+            # normalize angle to (-pi, pi]
+            bearing = (bearing + math.pi) % (2*math.pi) - math.pi
             prx_to_lms.append(BearingRange(lm.id, bearing, range))
         
         return prx_to_lms
