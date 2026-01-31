@@ -9,10 +9,10 @@ Proprioceptive sensors measure the robot's relationship to its past states. This
 """
 
 from abc import ABC, abstractmethod
-from math import pi
+from math import pi, inf
 import random
 from robot import Robot
-
+from src.utils import Position, Pose, Bounds, Landmark, BearingRange
 
 
 class SensorInterface(ABC):
@@ -113,7 +113,7 @@ class WheelEncoder(SensorInterface):
         self.ANG_NOISE = ang_noise  # rad/s
 
 
-    def sample(self):
+    def sample(self) -> tuple[float, float]:
         """
         Sample the robot's linear and angular velocity.
         """
@@ -161,9 +161,20 @@ class LandmarkPinger(SensorInterface):
         self.RANGE_PROP_NOISE = range_prop_noise
         self.BEARING_NOISE = bearing_noise  # radians
 
-    def sample(self):
+    def sample(self) -> list[BearingRange]:
         """
         Reports noisy measurements of the bearing and range between the robot and all nearby landmarks.
         """
-        # TODO: fill in the function
-        pass
+        measurements = []
+        for br in self.robot.env.get_proximity_to_landmarks():
+            # calculate combined noise of constant noise + proportional noise
+            total_range_noise = self.RANGE_NOISE + self.RANGE_PROP_NOISE*br.range
+            # landmarks out of range = infinite range & bearing
+            if br.range > self.MAX_RANGE:
+                measurements.append(BearingRange(br.landmark_id, inf, inf))
+            else:
+                noisy_bearing = random.gauss(br.bearing, self.BEARING_NOISE)
+                noisy_range = random.gauss(br.range, total_range_noise)
+                measurements.append(BearingRange(br.landmark_id, noisy_bearing, noisy_range))
+
+        return measurements
