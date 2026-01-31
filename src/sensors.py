@@ -10,6 +10,9 @@ Proprioceptive sensors measure the robot's relationship to its past states. This
 
 from abc import ABC, abstractmethod
 from math import pi
+import random
+from robot import Robot
+
 
 
 class SensorInterface(ABC):
@@ -23,7 +26,7 @@ class SensorInterface(ABC):
         last_meas_t: time of last sensor measurement
     """
 
-    def __init__(self, name: str, robot, interval: float):
+    def __init__(self, name: str, robot: Robot, interval: float):
         """
         Initialize a sensor class instace.
 
@@ -106,16 +109,18 @@ class WheelEncoder(SensorInterface):
             angular_noise_ratio: proportional noise for angular
         """
         super().__init__(name, robot, interval)
-        # TODO: save all noise constants as properties
-        self.LIN_NOISE = None  # m/s
-        self.ANG_NOISE = None  # rad/s
+        self.LIN_NOISE = lin_noise  # m/s
+        self.ANG_NOISE = ang_noise  # rad/s
+
 
     def sample(self):
         """
         Sample the robot's linear and angular velocity.
         """
-        # TODO: fill in the function
-        pass
+        return(
+                random.gauss(self.robot.latest_lin_vel_actual, self.LIN_NOISE),
+                random.gauss(self.robot.latest_ang_vel_actual, self.ANG_NOISE)
+                )   
 
 
 class LandmarkPinger(SensorInterface):
@@ -151,11 +156,10 @@ class LandmarkPinger(SensorInterface):
             interval (float): period between measurements
         """
         super().__init__(name, robot, interval)
-        # TODO: save max range and all noise constants as properties
-        self.MAX_RANGE = None  # meters
-        self.RANGE_NOISE = None  # meters
-        self.RANGE_PROP_NOISE = None
-        self.BEARING_NOISE = None  # radians
+        self.MAX_RANGE = max_range  # meters
+        self.RANGE_NOISE = range_noise  # meters
+        self.RANGE_PROP_NOISE = range_prop_noise
+        self.BEARING_NOISE = bearing_noise  # radians
 
     def sample(self):
         """
