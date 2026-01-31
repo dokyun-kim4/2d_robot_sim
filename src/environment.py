@@ -6,6 +6,9 @@ The Environment class models the world that the robots navigate in. The world is
 Critically, the environment tracks the robot's state. In this case, the robot's state is a vector that includes three state variables: x position, y position, and heading.
 """
 
+import pickle
+import datetime
+import math
 from src.utils import Position, Pose, Bounds, Landmark, BearingRange
 
 
@@ -58,13 +61,15 @@ class Environment:
         Returns:
             Nothing, but update the robot_pose property at the end
         """
-        dx,dy = self.is_valid_motion(dx,dy)
+        dx,dy = self.validate_xy_motion(dx,dy)
 
         self.robot_pose.pos.x += dx
         self.robot_pose.pos.y += dy
         self.robot_pose.theta += dtheta
 
-    def is_valid_motion(self, dx: float, dy: float):
+        self.time += self.DT
+
+    def validate_xy_motion(self, dx: float, dy: float):
         """
         Given attempted x and y motion by the robot, determine what motion is physically possible (i.e. doesn't go through any obstacles or barriers). Return the actual motion that will be executed.
 
@@ -76,9 +81,10 @@ class Environment:
             dx: change in x position that should be executed
             dy: change in y position that should be executed
         """
+        dx_valid = dx if self.is_valid_position(Position((self.robot_pose.pos.x + dx), self.robot_pose.pos.y)) else 0
+        dy_valid = dy if self.is_valid_position(Position((self.robot_pose.pos.x), self.robot_pose.pos.y + dy)) else 0
 
-
-        return dx,dy
+        return dx_valid, dy_valid
         
 
     def is_valid_position(self, position: Position):
@@ -103,26 +109,50 @@ class Environment:
         """
         Return the true robot pose.
         """
-        # TODO: fill in the function
-        pass
+        return self.robot_pose
 
     def get_proximity_to_landmarks(self):
         """
         Return a list of the robot's true range and bearing to all landmarks.
         """
-        # TODO: fill in the function
-        pass
+        prx_to_lms = []
+        for lm in self.LANDMARKS:
+
+            x_diff = lm.pos.x - self.robot_pose.pos.x 
+            y_diff = lm.pos.y - self.robot_pose.pos.y
+            range = math.sqrt(x_diff**2 + y_diff**2)
+            bearing = math.atan2(y_diff, x_diff) - self.robot_pose.theta
+            # TODO: Figure this out
+            prx_to_lms.append(BearingRange(lm.id, bearing, range))
+        
+        return prx_to_lms
 
     def take_state_snapshot(self):
         """
         Return true state information about this timestep, including time, robot position, and the robot's bearing/range to landmarks, in a table format.
         """
-        # TODO: fill in the function
         pass
 
     def get_environment_info(self):
         """
         Return static information about the environment, including dimensions, timestep size, locations and dimensions of obstacles, and locations of landmarks.
         """
-        # TODO: fill in the function
-        pass
+        info = {
+                "timestep": self.DT,
+                "obstacles": [obs.to_dict() for obs in self.OBSTACLES],
+                "landmarks": [lm.to_dict() for lm in self.LANDMARKS],
+                "world_size": self.DIMENSIONS.to_dict()
+                }
+        
+        # Environment info is identified with current real-world time
+        timestamp_str = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        file_path = "output/" + timestamp_str + ".pkl"
+
+        with open(file_path, 'wb') as file:
+            pickle.dump(info, file)
+        
+        print("Environment info saved to " + file_path)
+        return 
+
+env = Environment(dimensions=Bounds(0, 10, 0, 10), dt=0.1, obstacles = [], landmarks = [], robot_starting_pose = Pose(Position(0,0), 0))
+env.get_environment_info()
