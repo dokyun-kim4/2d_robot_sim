@@ -49,7 +49,7 @@ class Environment:
         self.LANDMARKS = landmarks
         self.robot_pose = robot_starting_pose
 
-    def robot_step(self, dx: float, dy: float, dtheta: float):
+    def robot_step(self, dx: float, dy: float, dtheta: float) -> None:
         """
         Update the robot's position and heading in the world. The robot should not be able to pass through obstacles or outside of the world bounds.
 
@@ -69,7 +69,7 @@ class Environment:
 
         self.time += self.DT
 
-    def validate_xy_motion(self, dx: float, dy: float):
+    def validate_xy_motion(self, dx: float, dy: float) -> tuple[float, float]:
         """
         Given attempted x and y motion by the robot, determine what motion is physically possible (i.e. doesn't go through any obstacles or barriers). Return the actual motion that will be executed.
 
@@ -87,7 +87,7 @@ class Environment:
         return dx_valid, dy_valid
         
 
-    def is_valid_position(self, position: Position):
+    def is_valid_position(self, position: Position) -> bool:
         """
         Check if a given robot position is valid; i.e. not out-of-bounds or within an obstacle. Return a boolean representing whether or not this condition is true.
 
@@ -105,13 +105,13 @@ class Environment:
         
         return in_world and not in_obstacle
 
-    def get_robot_pose(self):
+    def get_robot_pose(self) -> Pose:
         """
         Return the true robot pose.
         """
         return self.robot_pose
 
-    def get_proximity_to_landmarks(self):
+    def get_proximity_to_landmarks(self) -> list[BearingRange]:
         """
         Return a list of the robot's true range and bearing to all landmarks.
         """
@@ -152,7 +152,4 @@ class Environment:
             pickle.dump(info, file)
         
         print("Environment info saved to " + file_path)
-        return 
-
-env = Environment(dimensions=Bounds(0, 10, 0, 10), dt=0.1, obstacles = [], landmarks = [], robot_starting_pose = Pose(Position(0,0), 0))
-env.get_environment_info()
+        return info
