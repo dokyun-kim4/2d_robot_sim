@@ -5,6 +5,7 @@ The Robot class models the robotic agent that explores the world. The robot is r
 """
 import math
 import random
+import pandas as pd
 from environment import Environment
 from sensors import SensorInterface, WheelEncoder
 
@@ -105,13 +106,15 @@ class Robot:
         """
         Return noisy sensor readings of the environment at this timestep, including data from all sensors, in a table format.
         """
-        measurements = []
+        measurements = pd.DataFrame({
+                                        "environment_time": [self.env.time],
+                                        # also store commanded velocities for plotting
+                                        "lin_vel_cmd": [self.latest_lin_vel_cmd],
+                                        "ang_vel_cmd": [self.latest_ang_vel_cmd]
+                                        })
+
         for sensor in self.sensors:
             if (self.env.time % sensor.interval) == 0:
-                sensor_data = {
-                                "name": sensor.name,
-                                "time": self.env.time,
-                                "measurement": sensor.sample
-                               }
-                measurements.append(sensor_data)
+                measurements = pd.merge(measurements, sensor.sample(), left_index=True, right_index=True)
+        
         return measurements
