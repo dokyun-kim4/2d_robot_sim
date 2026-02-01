@@ -6,7 +6,7 @@ The Robot class models the robotic agent that explores the world. The robot is r
 import math
 import random
 from environment import Environment
-from sensors import SensorInterface
+from sensors import SensorInterface, WheelEncoder
 
 
 class Robot:
@@ -33,9 +33,9 @@ class Robot:
 
 
         self.env = env
-        self.sensors = []
+        self.sensors = [WheelEncoder(self)]
         self.MTR_NOISE_LINEAR = 0.05
-        self.MTR_NOISE_ANGULAR = 0.03
+        self.MTR_NOISE_ANGULAR = 0.01
 
     def robot_step_differential(self, lin_vel: float, ang_vel: float):
         """
@@ -50,6 +50,17 @@ class Robot:
             dy: change in y position
             d-theta: change in heading
         """
+        # Save commanded vel
+        self.latest_lin_vel_cmd = lin_vel
+        self.latest_ang_vel_cmd = ang_vel
+
+        # Apply motor noise
+        lin_vel = random.gauss(lin_vel, self.MTR_NOISE_LINEAR)
+        ang_vel = random.gauss(ang_vel, self.MTR_NOISE_ANGULAR)
+
+        self.latest_lin_vel_actual = lin_vel
+        self.latest_ang_vel_actual = ang_vel
+
         # If no angular velocity
         if ang_vel == 0:
             dtheta = 0
@@ -94,5 +105,13 @@ class Robot:
         """
         Return noisy sensor readings of the environment at this timestep, including data from all sensors, in a table format.
         """
-        # TODO: fill in the function
-        pass
+        measurements = []
+        for sensor in self.sensors:
+            if (self.env.time % sensor.interval) == 0:
+                sensor_data = {
+                                "name": sensor.name,
+                                "time": self.env.time,
+                                "measurement": sensor.sample
+                               }
+                measurements.append(sensor_data)
+        return measurements
