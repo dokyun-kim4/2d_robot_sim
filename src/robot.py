@@ -52,13 +52,17 @@ class Robot:
         """
         # If no angular velocity
         if ang_vel == 0:
+            dtheta = 0
             dx = self.env.DT * lin_vel * math.cos(self.env.robot_pose.theta)
             dy = self.env.DT * lin_vel * math.sin(self.env.robot_pose.theta)
         else:
         # Robot drives in arc, find radius via r = v/w
             r = lin_vel/ang_vel
-            # TODO: finish implementing arc
-        pass
+            dtheta = ang_vel * self.env.DT
+            dx = r*(math.sin(self.env.robot_pose.theta + dtheta) - math.sin(self.env.robot_pose.theta))
+            dy = -r*(math.cos(self.env.robot_pose.theta + dtheta) - math.cos(self.env.robot_pose.theta))
+        
+        self.env.robot_step(dx, dy, dtheta)
 
     def robot_step_translational(self, x_vel: float, y_vel: float, ang_vel: float):
         """
