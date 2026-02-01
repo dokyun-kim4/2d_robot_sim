@@ -12,6 +12,7 @@ from abc import ABC, abstractmethod
 from math import pi, inf
 import random
 from robot import Robot
+import pandas as pd
 from src.utils import Position, Pose, Bounds, Landmark, BearingRange
 
 
@@ -113,14 +114,14 @@ class WheelEncoder(SensorInterface):
         self.ANG_NOISE = ang_noise  # rad/s
 
 
-    def sample(self) -> tuple[float, float]:
+    def sample(self) -> pd.DataFrame:
         """
         Sample the robot's linear and angular velocity.
         """
-        return(
-                random.gauss(self.robot.latest_lin_vel_actual, self.LIN_NOISE),
-                random.gauss(self.robot.latest_ang_vel_actual, self.ANG_NOISE)
-                )   
+        measurement = pd.DataFrame()
+        measurement[f"{self.name}_lin_vel_actual"] = [random.gauss(self.robot.latest_lin_vel_actual, self.LIN_NOISE)]
+        measurement[f"{self.name}_ang_vel_actual"] = [random.gauss(self.robot.latest_ang_vel_actual, self.ANG_NOISE)]
+        return measurement
 
 
 class LandmarkPinger(SensorInterface):
@@ -161,11 +162,11 @@ class LandmarkPinger(SensorInterface):
         self.RANGE_PROP_NOISE = range_prop_noise
         self.BEARING_NOISE = bearing_noise  # radians
 
-    def sample(self) -> list[BearingRange]:
+    def sample(self) -> pd.DataFrame:
         """
         Reports noisy measurements of the bearing and range between the robot and all nearby landmarks.
         """
-        measurements = []
+        measurements = pd.DataFrame()
         landmarks = self.robot.env.get_proximity_to_landmarks()
         for lm in landmarks.columns:
             br: BearingRange = landmarks[lm].values[0]
@@ -173,10 +174,10 @@ class LandmarkPinger(SensorInterface):
             total_range_noise = self.RANGE_NOISE + self.RANGE_PROP_NOISE*br.range
             # landmarks out of range = infinite range & bearing
             if br.range > self.MAX_RANGE:
-                measurements.append(BearingRange(br.landmark_id, inf, inf))
+                measurements[f"{self.name}_{lm}"] = [(BearingRange(br.landmark_id, inf, inf))]
             else:
                 noisy_bearing = random.gauss(br.bearing, self.BEARING_NOISE)
                 noisy_range = random.gauss(br.range, total_range_noise)
-                measurements.append(BearingRange(br.landmark_id, noisy_bearing, noisy_range))
+                measurements[f"{self.name}_{lm}"] = [BearingRange(br.landmark_id, noisy_bearing, noisy_range)]
 
         return measurements
