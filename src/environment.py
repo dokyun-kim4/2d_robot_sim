@@ -6,6 +6,7 @@ The Environment class models the world that the robots navigate in. The world is
 Critically, the environment tracks the robot's state. In this case, the robot's state is a vector that includes three state variables: x position, y position, and heading.
 """
 
+import pandas as pd
 import pickle
 import datetime
 import math
@@ -112,11 +113,11 @@ class Environment:
         """
         return self.robot_pose
 
-    def get_proximity_to_landmarks(self) -> list[BearingRange]:
+    def get_proximity_to_landmarks(self) -> pd.DataFrame:
         """
         Return a list of the robot's true range and bearing to all landmarks.
         """
-        prx_to_lms = []
+        prx_to_lms = pd.DataFrame()
         for lm in self.LANDMARKS:
 
             x_diff = lm.pos.x - self.robot_pose.pos.x 
@@ -125,15 +126,30 @@ class Environment:
             bearing = math.atan2(y_diff, x_diff) - self.robot_pose.theta
             # normalize angle to (-pi, pi]
             bearing = (bearing + math.pi) % (2*math.pi) - math.pi
-            prx_to_lms.append(BearingRange(lm.id, bearing, range))
-        
+            prx_to_lms[f"Landmark{lm.id}"] = [BearingRange(lm.id, bearing, range)]
         return prx_to_lms
 
     def take_state_snapshot(self):
         """
         Return true state information about this timestep, including time, robot position, and the robot's bearing/range to landmarks, in a table format.
         """
-        pass
+        df1 = pd.DataFrame(
+            {
+                "Time": [self.time],
+                "RobotPose": [self.robot_pose],
+            }
+        )
+        gt_to_lms = self.get_proximity_to_landmarks()
+        df2 = pd.DataFrame()
+        for lm in gt_to_lms.columns:
+            df2[lm] = [gt_to_lms[lm].values[0]]
+
+        return pd.merge(
+            df1,
+            df2,
+            left_index=True,
+            right_index=True,
+        )
 
     def get_environment_info(self):
         """
