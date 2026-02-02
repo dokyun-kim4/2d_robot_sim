@@ -8,7 +8,6 @@ Critically, the environment tracks the robot's state. In this case, the robot's 
 
 import pandas as pd
 import pickle
-import datetime
 import math
 from utils import Position, Pose, Bounds, Landmark, BearingRange
 
@@ -66,12 +65,10 @@ class Environment:
             Nothing, but update the robot_pose property at the end
         """
         dx,dy = self.validate_xy_motion(dx,dy)
-
         self.robot_pose.pos.x += dx
         self.robot_pose.pos.y += dy
         new_theta = self.robot_pose.theta = dtheta
         self.robot_pose.theta = (new_theta + math.pi) % (2*math.pi) - math.pi
-
         self.time += self.DT
 
     def validate_xy_motion(self, dx: float, dy: float) -> tuple[float, float]:
