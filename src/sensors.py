@@ -11,9 +11,9 @@ Proprioceptive sensors measure the robot's relationship to its past states. This
 from abc import ABC, abstractmethod
 from math import pi, inf
 import random
-from robot import Robot
+# from robot import Robot
 import pandas as pd
-from src.utils import Position, Pose, Bounds, Landmark, BearingRange
+from utils import Position, Pose, Bounds, Landmark, BearingRange
 
 
 class SensorInterface(ABC):
@@ -27,7 +27,7 @@ class SensorInterface(ABC):
         last_meas_t: time of last sensor measurement
     """
 
-    def __init__(self, name: str, robot: Robot, interval: float):
+    def __init__(self, name: str, robot, interval: float):
         """
         Initialize a sensor class instace.
 
@@ -146,7 +146,6 @@ class LandmarkPinger(SensorInterface):
         range_noise=0.5,
         range_prop_noise=0.05,
         bearing_noise=pi / 6,
-        max_range=10.0,
     ):
         """
         Initialize an instance of the LandmarkPinger class.
@@ -157,7 +156,7 @@ class LandmarkPinger(SensorInterface):
             interval (float): period between measurements
         """
         super().__init__(name, robot, interval)
-        self.MAX_RANGE = max_range  # meters
+        self.MAX_RANGE = robot.env.lm_max_range  # meters
         self.RANGE_NOISE = range_noise  # meters
         self.RANGE_PROP_NOISE = range_prop_noise
         self.BEARING_NOISE = bearing_noise  # radians
