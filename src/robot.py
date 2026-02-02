@@ -8,6 +8,7 @@ import random
 import pandas as pd
 from environment import Environment
 from sensors import SensorInterface, WheelEncoder
+from utils import NEAR_ZERO, floating_mod_zero
 
 
 class Robot:
@@ -19,7 +20,7 @@ class Robot:
         sensors: list of all robot sensors
     """
 
-    def __init__(self, env: Environment):
+    def __init__(self, env: Environment, sensor_info: dict):
         """
         Initialize an instance of the Robot class.
 
@@ -34,7 +35,8 @@ class Robot:
 
 
         self.env = env
-        self.sensors = [WheelEncoder(self)]
+        self.sensor_info = sensor_info
+        self.sensors = [WheelEncoder(robot = self)]
         self.MTR_NOISE_LINEAR = 0.05
         self.MTR_NOISE_ANGULAR = 0.01
 
@@ -54,16 +56,15 @@ class Robot:
         # Save commanded vel
         self.latest_lin_vel_cmd = lin_vel
         self.latest_ang_vel_cmd = ang_vel
-
+        
         # Apply motor noise
-        lin_vel = random.gauss(lin_vel, self.MTR_NOISE_LINEAR)
-        ang_vel = random.gauss(ang_vel, self.MTR_NOISE_ANGULAR)
+        lin_vel = lin_vel * (1 + random.gauss(0, self.MTR_NOISE_LINEAR))
+        ang_vel = ang_vel * (1 + random.gauss(0, self.MTR_NOISE_ANGULAR))
 
         self.latest_lin_vel_actual = lin_vel
         self.latest_ang_vel_actual = ang_vel
-
         # If no angular velocity
-        if ang_vel == 0:
+        if abs(ang_vel) < NEAR_ZERO:
             dtheta = 0
             dx = self.env.DT * lin_vel * math.cos(self.env.robot_pose.theta)
             dy = self.env.DT * lin_vel * math.sin(self.env.robot_pose.theta)
@@ -114,7 +115,7 @@ class Robot:
                                         })
 
         for sensor in self.sensors:
-            if (self.env.time % sensor.interval) == 0:
+            if floating_mod_zero(self.env.time, sensor.interval):
                 measurements = pd.merge(measurements, sensor.sample(), left_index=True, right_index=True)
         
         return measurements
