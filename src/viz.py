@@ -27,9 +27,11 @@ class Visualizer:
 
         with open(gt_log_path, "rb") as f:
             self.gt_log = pickle.load(f)
+            self.gt_log.to_csv("gt_log.csv")
 
         with open(sensor_log_path, "rb") as f:
             self.sensor_log = pickle.load(f)
+            self.sensor_log.to_csv("sensor_log.csv")
 
         with open(env_info_path, "rb") as f:
             self.env_info = pickle.load(f)
@@ -136,10 +138,11 @@ class Visualizer:
             w = row.wheel_encoder_ang_vel_actual
 
             # Dead reckoning integration
-            x += np.cos(theta) * v * dt
-            y += np.sin(theta) * v * dt
+            dx = np.cos(theta) * v * dt
+            dy = np.sin(theta) * v * dt
+            x += dx
+            y += dy
             theta += w * dt
-
             # Wrap theta to [-pi, pi]
             theta = theta % (2 * np.pi)
             if theta > np.pi:
@@ -469,7 +472,4 @@ class Visualizer:
         return anim
 
 
-viz = Visualizer(
-    Path("./output/"),
-)
-viz.draw_all()
+
