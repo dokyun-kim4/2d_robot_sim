@@ -10,7 +10,7 @@ import pandas as pd
 import pickle
 import datetime
 import math
-from src.utils import Position, Pose, Bounds, Landmark, BearingRange
+from utils import Position, Pose, Bounds, Landmark, BearingRange
 
 
 class Environment:
@@ -31,7 +31,9 @@ class Environment:
         dt: float,
         obstacles: list[Bounds],
         landmarks: list[Landmark],
+        lm_max_range: float,
         robot_starting_pose: Pose,
+
     ):
         """
         Initialize an instance of the Environment class.
@@ -46,6 +48,7 @@ class Environment:
         self.DIMENSIONS = dimensions
         self.DT = dt
         self.time = 0
+        self.lm_max_range = lm_max_range
         self.OBSTACLES = obstacles
         self.LANDMARKS = landmarks
         self.robot_pose = robot_starting_pose
@@ -156,15 +159,14 @@ class Environment:
         Return static information about the environment, including dimensions, timestep size, locations and dimensions of obstacles, and locations of landmarks.
         """
         info = {
-                "timestep": self.DT,
-                "obstacles": [obs.to_dict() for obs in self.OBSTACLES],
-                "landmarks": [lm.to_dict() for lm in self.LANDMARKS],
-                "world_size": self.DIMENSIONS.to_dict()
+                "Timestep": self.DT,
+                "Obstacles": [obs.to_dict() for obs in self.OBSTACLES],
+                "Landmarks": [lm.to_dict() for lm in self.LANDMARKS],
+                "Dimensions": self.DIMENSIONS.to_dict(),
+                "Pinger Range": self.lm_max_range
                 }
-        
-        # Environment info is identified with current real-world time
-        timestamp_str = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        file_path = "output/" + timestamp_str + ".pkl"
+
+        file_path = "output/env_info.pkl"
 
         with open(file_path, 'wb') as file:
             pickle.dump(info, file)
