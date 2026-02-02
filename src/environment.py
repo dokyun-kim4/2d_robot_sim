@@ -67,7 +67,7 @@ class Environment:
         dx,dy = self.validate_xy_motion(dx,dy)
         self.robot_pose.pos.x += dx
         self.robot_pose.pos.y += dy
-        new_theta = self.robot_pose.theta = dtheta
+        new_theta = self.robot_pose.theta + dtheta
         self.robot_pose.theta = (new_theta + math.pi) % (2*math.pi) - math.pi
         self.time += self.DT
 
@@ -136,7 +136,7 @@ class Environment:
         df1 = pd.DataFrame(
             {
                 "Time": [self.time],
-                "RobotPose": [self.robot_pose],
+                "RobotPose": [Pose(Position(self.robot_pose.pos.x, self.robot_pose.pos.y), self.robot_pose.theta)],
             }
         )
         gt_to_lms = self.get_proximity_to_landmarks()
