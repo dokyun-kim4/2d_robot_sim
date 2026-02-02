@@ -163,7 +163,6 @@ class Visualizer:
 
         for row in self.gt_log.itertuples():
             pose: Pose = row.RobotPose
-            print(type(pose))
             x = pose.pos.x
             y = pose.pos.y
             theta = pose.theta
