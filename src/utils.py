@@ -7,6 +7,14 @@ There is nothing you need to edit or fill in within this file, but feel free to 
 from dataclasses import dataclass
 import random
 import numpy as np
+from enum import Enum
+
+class DriveType(Enum):
+    """
+    Enum for the robot's drive type. Determines how it moves and what sensor measurements it can take.
+    """
+    DIFFERENTIAL = 0
+    TRANSLATIONAL = 1
 
 
 def wrap_angle(angle: float):
