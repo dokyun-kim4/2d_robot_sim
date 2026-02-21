@@ -26,6 +26,7 @@ class Visualizer:
         gt_log_path = output_path / "ground_truth.pkl"
         sensor_log_path = output_path / "sensor_data.pkl"
         env_info_path = output_path / "env_info.pkl"
+        kalman_log_path = output_path / "kalman_filter.pkl"
 
         with open(gt_log_path, "rb") as f:
             self.gt_log = pickle.load(f)
@@ -37,6 +38,9 @@ class Visualizer:
 
         with open(env_info_path, "rb") as f:
             self.env_info = pickle.load(f)
+        
+        with open(kalman_log_path ,"rb") as f:
+            self.kalman_info = pickle.load(f)
 
     def plot_env(self):
         """
@@ -207,7 +211,7 @@ class Visualizer:
 
                     poses.append(
                         {
-                            "Time": row.Time,
+                            "Time": row.environment_time,
                             "x": x,
                             "y": y,
                             "theta": np.nan,  # GPS doesn't measure heading
@@ -216,6 +220,17 @@ class Visualizer:
                 except (AttributeError, TypeError):
                     # Skip if GPS is not a valid Position object
                     continue
+
+        return pd.DataFrame(poses)
+    
+    def poses_from_kalman(self):
+        poses = []
+        for state, _  in self.kalman_info:
+            print(state[0])
+            x = state[0][0]
+            y = state[1][0]
+            theta = state[2][0]
+            poses.append({"x": x, "y": y, "theta": theta})
 
         return pd.DataFrame(poses)
 
@@ -320,12 +335,17 @@ class Visualizer:
             self.poses_from_odom(),
             "red",
         )
-        # self.plot_single_trajectory(
-        #     "GPS Only",
-        #     self.poses_from_gps(),
-        #     "orange",
-        #     scatter=True,
-        # )
+        self.plot_single_trajectory(
+            "GPS Only",
+            self.poses_from_gps(),
+            "orange",
+            scatter=True,
+        )
+        self.plot_single_trajectory(
+            "Filter",
+            self.poses_from_kalman(),
+            "blue"
+        )
         plt.savefig(self.output_path / "dataset_viz.png")
         print("Finished plotting at path: ")
         print(self.output_path / "dataset_viz.png")
