@@ -34,22 +34,22 @@ class KalmanFilter:
             prior: the initial estimates for each state variable
         """
         # TODO: set the timestep size to the given parameter
-        self.DT: float = None
+        self.DT: float = dt
 
         # TODO: set the state vector to the given prior
-        self.x: np.ndarray = None
+        self.x: np.ndarray = prior
 
         # TODO: set the process model to an identity matrix
-        self.P: np.ndarray = None
+        self.P: np.ndarray = np.eye(3)
 
         # TODO: define the motion model
-        self.F: np.ndarray = None
+        self.F: np.ndarray = np.eye(3)
 
         # TODO: define the control model
-        self.B: np.ndarray = None
+        self.B: np.ndarray = np.eye(3) * dt
 
         # TODO: define the process noise
-        self.Q: np.ndarray = None
+        self.Q: np.ndarray = self.get_Q()
 
     def predict(self, u: np.ndarray):
         """
@@ -61,11 +61,10 @@ class KalmanFilter:
         Args:
             u: the input control vector
         """
-        # TODO: update the state vector using the state transition matrix and the given control input
-        self.x = None
+        # print(self.F.shape, self.x.shape, self.B.shape, u.shape)
 
-        # TODO: update the process model by propagating it through the state transition matrix and adding noise
-        self.P = None
+        self.x = self.F @ self.x + self.B @ u
+        self.P = self.F @ self.P @ self.F.T + self.Q
 
         return self.x, self.P
 

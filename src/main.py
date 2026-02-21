@@ -14,6 +14,7 @@ from kalman_filter import KalmanFilter
 from extended_kalman_filter import ExtendedKalmanFilter
 from utils import Position, Pose, Landmark, Bounds, DriveType
 from viz import Visualizer
+import numpy as np
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -80,12 +81,10 @@ if __name__ == "__main__":
     # set up the robot
     robot = Robot(env, sensor_config, robot_config)
 
-    # set up the (Extended) Kalman Filter
-    LINEAR = True
-    if LINEAR:
+    if robot.drive_type == DriveType.TRANSLATIONAL:
         kf = KalmanFilter(
             dt,
-            initial_robot_pose,
+            np.array([[initial_robot_pose.pos.x, initial_robot_pose.pos.y, initial_robot_pose.theta]]).T,
         )
     else:
         # set up the Extended Kalman Filter
@@ -122,7 +121,13 @@ if __name__ == "__main__":
         for step in range(int(total_timesteps) + 1):
 
             ground_truth_history = pd.concat([ground_truth_history, env.take_state_snapshot()], ignore_index= True)
-            sensor_data_history = pd.concat([sensor_data_history, robot.take_sensor_measurements()], ignore_index= True)
+
+            crnt_sensor_measurement = robot.take_sensor_measurements()
+            sensor_data_history = pd.concat([sensor_data_history, crnt_sensor_measurement], ignore_index= True)
+
+            u = np.array([crnt_sensor_measurement["vx_cmd"], crnt_sensor_measurement["vy_cmd"], crnt_sensor_measurement["ang_vel_cmd"]])
+            x, P = kf.predict(u)
+            kalman_filter_history.append((x, P))
             
             if not terminal and float(next_cmd[0]) <= step * env.DT:
                 # pocket prev vel to run until next vel flip
@@ -142,6 +147,7 @@ if __name__ == "__main__":
     
     pickle.dump(ground_truth_history, open(output_ground_truth_filepath, "wb"))
     pickle.dump(sensor_data_history, open(output_sensor_data_filepath, "wb"))
+    pickle.dump(kalman_filter_history, open(output_kalman_filter_filepath, "wb"))
     env.get_environment_info()
 
 
@@ -149,31 +155,3 @@ if __name__ == "__main__":
         Path("./output/"), drive_type=robot.drive_type
     )
     viz.draw_all()
-    #         # TODO: take a ground truth snapshot and add it to the history
-
-    #         # TODO: take sensor measurements and add it to the history
-
-    #         if LINEAR:
-    #             # TODO: call the Kalman Filter prediction step
-
-    #             # TODO: call the Kalman Filter update step if new sensor data is available
-    #             pass
-    #         else:
-    #             # TODO: call the Extended Kalman Filter prediction step
-
-    #             # TODO: call the Extended Kalman Filter update step if new sensor data is available, for each GPS reading and for each landmark ping
-    #             pass
-
-    #         # TODO: retrieve the next motor command from the input file
-
-    #         # TODO: execute the motor command)
-
-    # # at the end, write the histories into output files
-    # with open(output_ground_truth_filepath, "w") as gt_data:
-    #     # TODO: write ground_truth_history to a file
-
-    # with open(output_sensor_data_filepath, "w") as sensor_data:
-    #     # TODO: write sensor_data_history to a file
-
-    # with open(output_kalman_filter_filepath, "w") as kf_data:
-    #     # TODO: write kalman_filter_history to a file
