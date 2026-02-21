@@ -295,7 +295,6 @@ class LandmarkPinger(SensorInterface):
         # return
         return y
 
-
 class GPS(SensorInterface):
     """
     This class represents a GPS sensor that measures the position of the robot in 2D space.
@@ -332,139 +331,17 @@ class GPS(SensorInterface):
         self.Y_NOISE = y_noise
 
         # TODO: fill in the measurement model
-        self.H = None
+        self.H = np.array([[1, 0, 0],[0, 1, 0]]) # we dont measure angle
 
         # TODO: fill in the noise model
-        self.R = None
+        self.R = np.array([[self.X_NOISE, self.Y_NOISE]]).T
 
     def sample(self):
         """
         Take a noisy GPS measurement of robot position.
         """
-        measurements = pd.DataFrame()
-        landmarks = self.robot.env.get_proximity_to_landmarks()
-        for lm in landmarks.columns:
-            br: BearingRange = landmarks[lm].values[0]
-            # calculate combined noise of constant noise + proportional noise
-            total_range_noise = self.RANGE_NOISE + self.RANGE_PROP_NOISE*br.range
-            # landmarks out of range = infinite range & bearing
-            if br.range > self.MAX_RANGE:
-                measurements[f"{self.name}_{lm}"] = [(BearingRange(br.landmark_id, inf, inf))]
-            else:
-                noisy_bearing = random.gauss(br.bearing, self.BEARING_NOISE)
-                noisy_range = random.gauss(br.range, total_range_noise)
-                measurements[f"{self.name}_{lm}"] = [BearingRange(br.landmark_id, noisy_bearing, noisy_range)]
+        gt_pose = self.robot.env.get_gt_robot_pose()
+        x_noisy = random.gauss(gt_pose.pos.x, self.X_NOISE)
+        y_noisy = random.gauss(gt_pose.pos.y, self.Y_NOISE)
 
-        return measurements
-
-    def R(self, z):
-        """
-        Estimate variance of a given pinger measurement.
-
-        Args:
-            z (ndarray): pinger observation [[range 0], [0 bearing]]
-
-        Returns:
-            Sensor noise model for pinger measurement
-        """
-        bearing_stdev = self.BEARING_NOISE
-        range_stdev = self.RANGE_NOISE + z[0] * self.RANGE_PROP_NOISE
-        return np.diag([range_stdev, bearing_stdev]) ** 2
-
-    def H_eval(self, x, lm_id):
-        """
-        Evaluate the Jacobian of h(x) at x, which reshapes a state vector to be in the observation space. This matrix is used to turn a state prediction into an observation prediction for a specific landmark.
-
-        Args:
-            x: the current state vector, to linearize with respect to
-            lm_id: the ID of the landmark that we are predicting an observation of
-        """
-        # TODO: find the x and y position of the given landmark
-        lm_x = None
-        lm_y = None
-
-        # TODO: set the value of each symbolic substitution to the actual numerical value that was passed in
-        self.subs[x] = None
-        self.subs[y] = None
-        self.subs[theta] = None
-        self.subs[j] = None  # note: we use j for landmark x position
-        self.subs[k] = None  # note: we use k for landmark y position
-
-        # TODO: evaluate the Jacobian at the subs values and convert it to a numpy array
-        H_eval = None
-
-        # return
-        return H_eval
-
-    def y(self, z, x, lm_id):
-        """
-        Calculate the residual between an observation x and a predicted observation derived from a predicted state. The predicted observation is in reference to a specified landmark.
-        """
-        # TODO: find the x and y position of the given landmark
-        lm_x = None
-        lm_y = None
-
-        # TODO: set the value of each symbolic substitution to the actual numerical value that was passed in
-        self.subs[x] = None
-        self.subs[y] = None
-        self.subs[theta] = None
-        self.subs[j] = None  # note: we use j for landmark x position
-        self.subs[k] = None  # note: we use k for landmark y position
-
-        # TODO: evaluate the measurement model at the subs values and convert it to a numpy array
-        hx_eval = None
-
-        # TODO: calculate the residual
-        y = None
-
-        # return
-        return y
-
-
-class GPS(SensorInterface):
-    """
-    This class represents a GPS sensor that measures the position of the robot in 2D space.
-
-    Attributes:
-        name (str): string identifier
-        robot (Robot): reference robot
-        interval (float): period between measurements
-        last_meas_t (float): time of last measurement
-        X_NOISE (float): absolute noise for x stdev
-        Y_NOISE (float): absolute noise for y stdev
-    """
-
-    def __init__(
-        self,
-        robot,
-        name,
-        interval,
-        x_noise,
-        y_noise,
-    ):
-        """
-        Initialize an instance of the GPS class.
-
-        Args:
-            name (str): reference identifier
-            robot (Robot): reference robot
-            interval (float): period between measurements
-            x_noise (float): absolute noise for x stdev
-            y_noise (float): absolute noise for y stdev
-        """
-        super().__init__(name, robot, interval)
-        self.X_NOISE = x_noise
-        self.Y_NOISE = y_noise
-
-        # TODO: fill in the measurement model
-        self.H = None
-
-        # TODO: fill in the noise model
-        self.R = None
-
-    def sample(self):
-        """
-        Take a noisy GPS measurement of robot position.
-        """
-        # TODO: fill in the function
-        pass
+        return pd.DataFrame({self.name: [Position(x_noisy, y_noisy)]})
