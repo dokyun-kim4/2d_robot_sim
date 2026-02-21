@@ -126,8 +126,15 @@ if __name__ == "__main__":
             sensor_data_history = pd.concat([sensor_data_history, crnt_sensor_measurement], ignore_index= True)
 
             u = np.array([crnt_sensor_measurement["vx_cmd"], crnt_sensor_measurement["vy_cmd"], crnt_sensor_measurement["ang_vel_cmd"]])
-            x, P = kf.predict(u)
-            kalman_filter_history.append((x, P))
+            kf.predict(u)
+            
+            if "GPS" in crnt_sensor_measurement.columns:
+                gps_data = crnt_sensor_measurement["GPS"].iloc[0]
+                z = np.array([[gps_data.x, gps_data.y]]).T
+                gps = next((inst for inst in robot.sensors if inst.name == "GPS"), None)
+                x, P = kf.update(z, gps.H, gps.R)
+                kalman_filter_history.append((x,P))
+
             
             if not terminal and float(next_cmd[0]) <= step * env.DT:
                 # pocket prev vel to run until next vel flip
