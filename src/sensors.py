@@ -311,10 +311,10 @@ class GPS(SensorInterface):
     def __init__(
         self,
         robot,
-        name,
-        interval,
-        x_noise,
-        y_noise,
+        name="GPS",
+        interval=2.0,
+        x_noise=0.5,
+        y_noise=0.5,
     ):
         """
         Initialize an instance of the GPS class.
@@ -340,7 +340,7 @@ class GPS(SensorInterface):
         """
         Take a noisy GPS measurement of robot position.
         """
-        gt_pose = self.robot.env.get_gt_robot_pose()
+        gt_pose = self.robot.env.get_robot_pose()
         x_noisy = random.gauss(gt_pose.pos.x, self.X_NOISE)
         y_noisy = random.gauss(gt_pose.pos.y, self.Y_NOISE)
 
