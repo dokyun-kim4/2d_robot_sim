@@ -33,22 +33,11 @@ class KalmanFilter:
             dt: the length of each timestep, in seconds
             prior: the initial estimates for each state variable
         """
-        # TODO: set the timestep size to the given parameter
         self.DT: float = dt
-
-        # TODO: set the state vector to the given prior
         self.x: np.ndarray = prior
-
-        # TODO: set the process model to an identity matrix
         self.P: np.ndarray = np.eye(3)
-
-        # TODO: define the motion model
         self.F: np.ndarray = np.eye(3)
-
-        # TODO: define the control model
         self.B: np.ndarray = np.eye(3) * dt
-
-        # TODO: define the process noise
         self.Q: np.ndarray = self.get_Q()
 
     def predict(self, u: np.ndarray):
@@ -85,20 +74,15 @@ class KalmanFilter:
             H: the measurement model, which relates the state space to the measurement space
             R: the measurement noise model (covariance)
         """
-        # TODO: calculate the total uncertainty in the system
-        S = None
+        S = H @ self.P @ H.T + R
 
-        # TODO: calculate the Kalman Gain, AKA the percentage of the total uncertainty that came from the estimate rather than the measurement
-        K = None
+        K = self.P @ H.T @ np.linalg.inv(S)
 
-        # TODO: calculate the residual, AKA the error between the observation and what we expected the observation to be given our estimated state vector
-        y = None
+        y = z - H @ self.x
 
-        # TODO: update the state vector
-        self.x = None
+        self.x += K @ y
 
-        # TODO: update the process model
-        self.P = None
+        self.P -= K @ H @ self.P
 
         return self.x, self.P
 
