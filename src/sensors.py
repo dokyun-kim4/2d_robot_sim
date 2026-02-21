@@ -330,11 +330,8 @@ class GPS(SensorInterface):
         self.X_NOISE = x_noise
         self.Y_NOISE = y_noise
 
-        # TODO: fill in the measurement model
         self.H = np.array([[1, 0, 0],[0, 1, 0]]) # we dont measure angle
-
-        # TODO: fill in the noise model
-        self.R = np.array([[self.X_NOISE, self.Y_NOISE]]).T
+        self.R = np.array([[self.X_NOISE**2, self.Y_NOISE**2]]).T
 
     def sample(self):
         """
