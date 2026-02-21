@@ -7,7 +7,7 @@ import math
 import random
 import pandas as pd
 from environment import Environment
-from sensors import SensorInterface, WheelEncoder
+from sensors import SensorInterface, WheelEncoder, GPS
 from utils import NEAR_ZERO, floating_mod_zero, DriveType
 from enum import Enum
 
@@ -46,7 +46,7 @@ class Robot:
 
         self.env = env
         self.sensor_info = sensor_info
-        self.sensors = [WheelEncoder(robot = self)]
+        self.sensors = [WheelEncoder(robot = self), GPS(robot = self)]
         self.MTR_NOISE_LINEAR = 0.05
         self.MTR_NOISE_ANGULAR = 0.01
 
