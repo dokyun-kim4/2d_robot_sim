@@ -226,7 +226,6 @@ class Visualizer:
     def poses_from_kalman(self):
         poses = []
         for state, _  in self.kalman_info:
-            print(state[0])
             x = state[0][0]
             y = state[1][0]
             theta = state[2][0]
