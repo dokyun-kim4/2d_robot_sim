@@ -5,7 +5,7 @@ import numpy as np
 from matplotlib.animation import FuncAnimation, PillowWriter
 import pickle
 from pathlib import Path
-from utils import Pose, Landmark
+from utils import Pose, Landmark, DriveType
 
 
 class Visualizer:
@@ -16,11 +16,13 @@ class Visualizer:
     def __init__(
         self,
         output_path: Path,
+        drive_type: DriveType,
     ):
         """
         Initialize the visualizer class.
         """
         self.output_path = output_path
+        self.drive_type = drive_type
         gt_log_path = output_path / "ground_truth.pkl"
         sensor_log_path = output_path / "sensor_data.pkl"
         env_info_path = output_path / "env_info.pkl"
@@ -134,12 +136,23 @@ class Visualizer:
         dt = self.env_info["Timestep"]
 
         for row in self.sensor_log.itertuples():
-            v = row.wheel_encoder_lin_vel_actual
-            w = row.wheel_encoder_ang_vel_actual
 
-            # Dead reckoning integration
-            dx = np.cos(theta) * v * dt
-            dy = np.sin(theta) * v * dt
+            if self.drive_type == DriveType.DIFFERENTIAL:
+                v = row.wheel_encoder_lin_vel_actual
+                w = row.wheel_encoder_ang_vel_actual
+
+                # Dead reckoning for diff drive
+                dx = np.cos(theta) * v * dt
+                dy = np.sin(theta) * v * dt
+            else:
+                vx = row.wheel_encoder_vx_actual
+                vy = row.wheel_encoder_vy_actual
+                w = row.wheel_encoder_ang_vel_actual
+
+                # Dead reckoning for translational drive
+                dx = vx * dt
+                dy = vy * dt
+
             x += dx
             y += dy
             theta += w * dt

@@ -12,18 +12,34 @@ from environment import Environment
 from robot import Robot
 from kalman_filter import KalmanFilter
 from extended_kalman_filter import ExtendedKalmanFilter
-from utils import Position, Pose, Landmark, Bounds
+from utils import Position, Pose, Landmark, Bounds, DriveType
 from viz import Visualizer
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Load a YAML config file.")
+    parser = argparse.ArgumentParser()
 
     parser.add_argument(
         "--config", 
         type=Path, 
-        required=True, 
+        default=Path("./input/config.yaml"),
         help="Path to the yaml configuration file"
     )
+
+    parser.add_argument(
+        "--output_dir",
+        type=Path,
+        default=Path("./output/"),
+        help="Directory to save output files and visualizations",
+    )
+
+    parser.add_argument(
+        "--input_commands",
+        type=Path,
+        default=Path("./input/diff_vel_cmd.csv"),
+        help="Path to the CSV file containing motor commands",
+    )
+
+
     args = parser.parse_args()
     if args.config.exists():
         with open(args.config, 'r') as file:
@@ -62,21 +78,7 @@ if __name__ == "__main__":
     )
 
     # set up the robot
-    robot = Robot(env, sensor_config)
-
-    # set up the (Extended) Kalman Filter
-    LINEAR = True
-    if LINEAR:
-        kf = KalmanFilter(
-            dt,
-            initial_robot_pose,
-        )
-    else:
-        # set up the Extended Kalman Filter
-        kf = ExtendedKalmanFilter(
-            dt,
-            initial_robot_pose,
-        )
+    robot = Robot(env, sensor_config, robot_config)
 
     # set up the (Extended) Kalman Filter
     LINEAR = True
@@ -103,15 +105,14 @@ if __name__ == "__main__":
     kalman_filter_history = []
 
     # set up input filepath and output filepaths
-    input_commands_filepath = "input/vel_cmd_example.csv"
-    output_ground_truth_filepath = "output/ground_truth.pkl"
-    output_sensor_data_filepath = "output/sensor_data.pkl"
-    output_kalman_filter_filepath = ""
+    input_commands_filepath = args.input_commands
+    output_ground_truth_filepath = args.output_dir / "ground_truth.pkl"
+    output_sensor_data_filepath = args.output_dir / "sensor_data.pkl"
+    output_kalman_filter_filepath = args.output_dir / "kalman_filter.pkl"
 
     # open up the instructions, pop the first
     with open(input_commands_filepath, "r") as cmd:
     
-
         # pop motor commands
         csv_reader = csv.reader(cmd)
         next_cmd = next(csv_reader, None)  # skip header row
@@ -125,14 +126,18 @@ if __name__ == "__main__":
             
             if not terminal and float(next_cmd[0]) <= step * env.DT:
                 # pocket prev vel to run until next vel flip
-                crnt_lin_vel, crnt_ang_vel = float(next_cmd[1]), float(next_cmd[2])
+                crnt_cmd = [float(x) for x in next_cmd[1:]]
                 try:
                     # flip to next vel
                     next_cmd = next(csv_reader)
                     
                 except StopIteration:
                     terminal = True
-            robot.robot_step_differential(crnt_lin_vel, crnt_ang_vel)
+
+            if robot.drive_type == DriveType.DIFFERENTIAL:
+                robot.robot_step_differential(crnt_cmd)
+            else:
+                robot.robot_step_translational(crnt_cmd)
 
     
     pickle.dump(ground_truth_history, open(output_ground_truth_filepath, "wb"))
@@ -141,34 +146,34 @@ if __name__ == "__main__":
 
 
     viz = Visualizer(
-        Path("./output/"),
+        Path("./output/"), drive_type=robot.drive_type
     )
     viz.draw_all()
-            # TODO: take a ground truth snapshot and add it to the history
+    #         # TODO: take a ground truth snapshot and add it to the history
 
-            # TODO: take sensor measurements and add it to the history
+    #         # TODO: take sensor measurements and add it to the history
 
-            if LINEAR:
-                # TODO: call the Kalman Filter prediction step
+    #         if LINEAR:
+    #             # TODO: call the Kalman Filter prediction step
 
-                # TODO: call the Kalman Filter update step if new sensor data is available
-                pass
-            else:
-                # TODO: call the Extended Kalman Filter prediction step
+    #             # TODO: call the Kalman Filter update step if new sensor data is available
+    #             pass
+    #         else:
+    #             # TODO: call the Extended Kalman Filter prediction step
 
-                # TODO: call the Extended Kalman Filter update step if new sensor data is available, for each GPS reading and for each landmark ping
-                pass
+    #             # TODO: call the Extended Kalman Filter update step if new sensor data is available, for each GPS reading and for each landmark ping
+    #             pass
 
-            # TODO: retrieve the next motor command from the input file
+    #         # TODO: retrieve the next motor command from the input file
 
-            # TODO: execute the motor command)
+    #         # TODO: execute the motor command)
 
-    # at the end, write the histories into output files
-    with open(output_ground_truth_filepath, "w") as gt_data:
-        # TODO: write ground_truth_history to a file
+    # # at the end, write the histories into output files
+    # with open(output_ground_truth_filepath, "w") as gt_data:
+    #     # TODO: write ground_truth_history to a file
 
-    with open(output_sensor_data_filepath, "w") as sensor_data:
-        # TODO: write sensor_data_history to a file
+    # with open(output_sensor_data_filepath, "w") as sensor_data:
+    #     # TODO: write sensor_data_history to a file
 
-    with open(output_kalman_filter_filepath, "w") as kf_data:
-        # TODO: write kalman_filter_history to a file
+    # with open(output_kalman_filter_filepath, "w") as kf_data:
+    #     # TODO: write kalman_filter_history to a file

@@ -13,7 +13,7 @@ from math import pi, inf
 import random
 # from robot import Robot
 import pandas as pd
-from utils import Position, Pose, Bounds, Landmark, BearingRange
+from utils import Position, Pose, Bounds, Landmark, BearingRange, DriveType
 
 import numpy as np
 
@@ -114,6 +114,7 @@ class WheelEncoder(SensorInterface):
             interval: period between measurements
             linear_noise_ratio: proportional noise for linear velocity
             angular_noise_ratio: proportional noise for angular
+            diff_drive: whether the robot is diff drive or translational. If diff drive, [v, w] is measured, [vx, vy, w] if translational
         """
         super().__init__(name, robot, interval)
         self.LIN_NOISE = lin_noise  # m/s
@@ -125,8 +126,14 @@ class WheelEncoder(SensorInterface):
         Sample the robot's linear and angular velocity.
         """
         measurement = pd.DataFrame()
-        measurement[f"{self.name}_lin_vel_actual"] = [random.gauss(self.robot.latest_lin_vel_actual, self.LIN_NOISE)]
-        measurement[f"{self.name}_ang_vel_actual"] = [random.gauss(self.robot.latest_ang_vel_actual, self.ANG_NOISE)]
+
+        if self.robot.drive_type == DriveType.DIFFERENTIAL:
+            measurement[f"{self.name}_lin_vel_actual"] = [random.gauss(self.robot.latest_lin_vel_actual, self.LIN_NOISE)]
+            measurement[f"{self.name}_ang_vel_actual"] = [random.gauss(self.robot.latest_ang_vel_actual, self.ANG_NOISE)]
+        else:
+            measurement[f"{self.name}_vx_actual"] = [random.gauss(self.robot.latest_vx_actual, self.LIN_NOISE)]
+            measurement[f"{self.name}_vy_actual"] = [random.gauss(self.robot.latest_vy_actual, self.LIN_NOISE)]
+            measurement[f"{self.name}_ang_vel_actual"] = [random.gauss(self.robot.latest_ang_vel_actual, self.ANG_NOISE)]
         return measurement
 
 
