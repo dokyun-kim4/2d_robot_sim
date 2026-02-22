@@ -2,3 +2,5 @@
 .vscode/
 **/__pycache__/
 *.csv
+
+*.egg-info

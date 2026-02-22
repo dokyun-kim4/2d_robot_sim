@@ -13,3 +13,8 @@ requires-python = ">=3.11"
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["test"]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.15.2",
+]
