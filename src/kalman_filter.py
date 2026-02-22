@@ -11,6 +11,8 @@ u = [v_x, v_y, w]
 import numpy as np
 import random
 
+from utils import wrap_angle
+
 
 class KalmanFilter:
     """
@@ -34,7 +36,7 @@ class KalmanFilter:
             prior: the initial estimates for each state variable
         """
         self.DT: float = dt
-        self.x: np.ndarray = prior
+        self.x_state: np.ndarray = np.array(prior.flatten(), dtype=np.float64)
         self.P: np.ndarray = np.eye(3)
         self.F: np.ndarray = np.eye(3)
         self.B: np.ndarray = np.eye(3) * dt
@@ -50,12 +52,12 @@ class KalmanFilter:
         Args:
             u: the input control vector
         """
-        # print(self.F.shape, self.x.shape, self.B.shape, u.shape)
 
-        self.x = self.F @ self.x + self.B @ u
+        self.x_state = (self.F @ self.x_state.reshape(-1, 1) + self.B @ u).flatten()
+        self.x_state[2] = wrap_angle(self.x_state[2])  # Ensure theta stays within [-pi, pi]
         self.P = self.F @ self.P @ self.F.T + self.Q
 
-        return self.x, self.P
+        return self.x_state, self.P
 
     def update(self, z, H, R):
         """
@@ -78,19 +80,20 @@ class KalmanFilter:
 
         K = self.P @ H.T @ np.linalg.inv(S)
 
-        y = z - H @ self.x
+        print(z.shape, H.shape, self.x_state.shape)
+        y = z - H @ self.x_state.reshape(-1, 1)
 
-        self.x += K @ y
+        self.x_state += (K @ y).flatten()
 
         self.P -= K @ H @ self.P
 
-        return self.x, self.P
+        self.x_state[2] = wrap_angle(self.x_state[2])  # Ensure theta stays within [-pi, pi]
+        return self.x_state, self.P
 
     def get_Q(self):
         """
         Generate white noise to apply to the process model after each prediction.
         """
-        # TODO: explore different standard deviation values for this function!
         stdev = 0.1
         return np.array(
             [
