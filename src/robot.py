@@ -7,7 +7,7 @@ import math
 import random
 import pandas as pd
 from environment import Environment
-from sensors import SensorInterface, WheelEncoder, GPS
+from sensors import SensorInterface, WheelEncoder, GPS, LandmarkPinger
 from utils import NEAR_ZERO, floating_mod_zero, DriveType
 from enum import Enum
 
@@ -29,6 +29,10 @@ class Robot:
         """
         self.drive_type = DriveType[robot_info["drive_type"]]
 
+        mtr_config = robot_info["Motor"]
+        self.MTR_NOISE_LINEAR = mtr_config["linear_noise"]
+        self.MTR_NOISE_ANGULAR = mtr_config["angular_noise"]
+
         # Save cmd vel and actual vel for spoofed sensor data
         if self.drive_type == DriveType.DIFFERENTIAL:
             self.latest_lin_vel_cmd = 0.0
@@ -45,10 +49,35 @@ class Robot:
 
 
         self.env = env
-        self.sensor_info = sensor_info
-        self.sensors = [WheelEncoder(robot = self), GPS(robot = self)]
-        self.MTR_NOISE_LINEAR = 0.05
-        self.MTR_NOISE_ANGULAR = 0.01
+        gps_config = sensor_info["GPS"]
+        encoder_config = sensor_info["WheelEncoder"]
+        lm_pinger_config = sensor_info["LandmarkPinger"]
+        self.sensors = [
+                        WheelEncoder(
+                            robot = self,
+                            interval = encoder_config["interval"],
+                            lin_noise = encoder_config["linear_noise"],
+                            ang_noise = encoder_config["angular_noise"],
+                            lin_noise_ratio = encoder_config["linear_noise_ratio"],
+                            ang_noise_ratio = encoder_config["angular_noise_ratio"]
+                        ),
+                        GPS(
+                            robot = self,
+                            interval = gps_config["interval"],
+                            x_noise = gps_config["x_noise"],
+                            y_noise = gps_config["y_noise"]
+                        ),
+                        LandmarkPinger(
+                            robot = self,
+                            max_range = self.env.lm_max_range,
+                            interval=lm_pinger_config["interval"],
+                            range_noise=lm_pinger_config["range_noise"],
+                            range_prop_noise=lm_pinger_config["range_prop_noise"],
+                            bearing_noise=lm_pinger_config["bearing_noise"]
+                        )
+                    
+                    ]
+
 
     def robot_step_differential(self, cmd: tuple[float, float]):
         """
@@ -74,17 +103,21 @@ class Robot:
         self.latest_lin_vel_actual = lin_vel
         self.latest_ang_vel_actual = ang_vel
         # If no angular velocity
-        if abs(ang_vel) < NEAR_ZERO:
-            dtheta = 0
-            dx = self.env.DT * lin_vel * math.cos(self.env.robot_pose.theta)
-            dy = self.env.DT * lin_vel * math.sin(self.env.robot_pose.theta)
-        else:
-        # Robot drives in arc, find radius via r = v/w
-            r = lin_vel/ang_vel
-            dtheta = ang_vel * self.env.DT
-            dx = r*(math.sin(self.env.robot_pose.theta + dtheta) - math.sin(self.env.robot_pose.theta))
-            dy = -r*(math.cos(self.env.robot_pose.theta + dtheta) - math.cos(self.env.robot_pose.theta))
+        # if abs(ang_vel) < NEAR_ZERO:
+        #     dtheta = 0
+        #     dx = self.env.DT * lin_vel * math.cos(self.env.robot_pose.theta)
+        #     dy = self.env.DT * lin_vel * math.sin(self.env.robot_pose.theta)
+        # else:
+        # # Robot drives in arc, find radius via r = v/w
+        #     r = lin_vel/ang_vel
+        #     dtheta = ang_vel * self.env.DT
+        #     dx = r*(math.sin(self.env.robot_pose.theta + dtheta) - math.sin(self.env.robot_pose.theta))
+        #     dy = -r*(math.cos(self.env.robot_pose.theta + dtheta) - math.cos(self.env.robot_pose.theta))
         
+        dx = self.env.DT * lin_vel * math.cos(self.env.robot_pose.theta)
+        dy = self.env.DT * lin_vel * math.sin(self.env.robot_pose.theta)
+        dtheta = self.env.DT * ang_vel
+
         self.env.robot_step(dx, dy, dtheta)
 
     def robot_step_translational(self, cmd: tuple[float, float, float]):
