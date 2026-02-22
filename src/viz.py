@@ -226,9 +226,9 @@ class Visualizer:
     def poses_from_kalman(self):
         poses = []
         for state, _  in self.kalman_info:
-            x = state[0][0]
-            y = state[1][0]
-            theta = state[2][0]
+            x = state[0]
+            y = state[1]
+            theta = state[2]
             poses.append({"x": x, "y": y, "theta": theta})
 
         return pd.DataFrame(poses)
