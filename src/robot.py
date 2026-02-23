@@ -22,7 +22,13 @@ class Robot:
         sensors: list of all robot sensors
     """
 
-    def __init__(self, env: Environment, sensor_info: dict, robot_info: dict, drive_type: DriveType):
+    def __init__(
+        self,
+        env: Environment,
+        sensor_info: dict,
+        robot_info: dict,
+        drive_type: DriveType,
+    ):
         """
         Initialize an instance of the Robot class.
 
@@ -101,17 +107,6 @@ class Robot:
 
         self.latest_lin_vel_actual = lin_vel
         self.latest_ang_vel_actual = ang_vel
-        # If no angular velocity
-        # if abs(ang_vel) < NEAR_ZERO:
-        #     dtheta = 0
-        #     dx = self.env.DT * lin_vel * math.cos(self.env.robot_pose.theta)
-        #     dy = self.env.DT * lin_vel * math.sin(self.env.robot_pose.theta)
-        # else:
-        # # Robot drives in arc, find radius via r = v/w
-        #     r = lin_vel/ang_vel
-        #     dtheta = ang_vel * self.env.DT
-        #     dx = r*(math.sin(self.env.robot_pose.theta + dtheta) - math.sin(self.env.robot_pose.theta))
-        #     dy = -r*(math.cos(self.env.robot_pose.theta + dtheta) - math.cos(self.env.robot_pose.theta))
 
         dx = self.env.DT * lin_vel * math.cos(self.env.robot_pose.theta)
         dy = self.env.DT * lin_vel * math.sin(self.env.robot_pose.theta)

@@ -18,7 +18,7 @@ import numpy as np
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    
+
     parser.add_argument(
         "--input_commands",
         type=Path,
@@ -47,8 +47,6 @@ if __name__ == "__main__":
         default=Path("./output/"),
         help="Directory to save output files and visualizations",
     )
-
-
 
     args = parser.parse_args()
     if args.config.exists():
@@ -87,7 +85,9 @@ if __name__ == "__main__":
     )
 
     # set up the robot
-    robot = Robot(env, sensor_config, robot_config, drive_type = DriveType(args.drive_type))
+    robot = Robot(
+        env, sensor_config, robot_config, drive_type=DriveType(args.drive_type)
+    )
 
     if robot.drive_type == DriveType.TRANSLATIONAL:
         kf = KalmanFilter(
@@ -201,7 +201,7 @@ if __name__ == "__main__":
                         ),
                         None,
                     )
-                    print("Updating with landmark measurement from Landmark", lm_id)
+
                     x, P = kf.update(
                         H=lm_pinger.H_eval(x, lm_id),
                         R=lm_pinger.R(z),
