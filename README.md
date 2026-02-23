@@ -49,7 +49,7 @@ This repository contains a 2D simulation environment used in the _Probabilistic 
 
    ```bash
     # For Linear KF
-    python3 src/main.py --input_commands ./input/diff_vel_cmd.csv --config ./input/config.yaml --drive_type 1
+    python3 src/main.py --input_commands ./input/swerve_vel_cmd.csv --config ./input/config.yaml --drive_type 1
     
     # For Extended KF
     python3 src/main.py --input_commands ./input/diff_vel_cmd.csv --config ./input/config.yaml --drive_type 0
@@ -65,6 +65,10 @@ The plot above shows the true trajectory of the robot (green), the trajectory fr
 
 
 ### Extended Kalman Filter
-<image src="media/ekf_output.png" alt="Extended KF Output" width="500"/>
+<img src="media/ekf_output_gps_only.png" alt="EKF Output GPS only" width="400"/> <img src="media/ekf_output_gps_landmarks.png" alt="EKF Output GPS and Landmarks" width="400"/>
 
-The plot above shows the true trajectory of the robot (green), the trajectory from dead reckoning, the trajectory estimated by the Extended Kalman Filter (blue), GPS observations (orange), and the landmarks (star). We can see that the dead reckoning trajectory diverges significantly from the true trajectory due to the accumulation of errors over time. In contrast, the EKF trajectory is able to  follow the true trajectory closer, demonstrating its ability to correct for such errors using sensor measurements. The GPS observations provide additional information that helps the EKF maintain an accurate estimate of the robot's position, while the landmarks serve as reference points that further enhance the filter's performance.
+The plot on the **left** shows the EKF trajectory when only GPS measurements are used for updates, while the plot on the **right** shows the EKF trajectory when both GPS and landmark measurements are used. Both plots also include the true trajectory of the robot (green), the trajectory from dead reckoning (red), GPS observations (orange), and the landmarks (star). 
+
+We can see that with only GPS measurements, there are still noticeable differences between the EKF trajectory and the true trajectory, especially as time progresses. This is because GPS measurements alone may not be sufficient to correct for all the errors in the state estimate, particularly in scenarios where the robot is turning or when GPS measurements are noisy. 
+
+When both GPS and landmark measurements are used, the EKF trajectory follows the true trajectory closer, demonstrating a significant improvement in estimation accuracy. This is because the landmarks provide additional information that helps to correct for errors in the state estimate, especially during turns or when GPS measurements are less reliable.
