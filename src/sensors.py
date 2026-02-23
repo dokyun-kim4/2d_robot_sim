@@ -123,7 +123,6 @@ class WheelEncoder(SensorInterface):
         self.ANG_NOISE_RATIO = ang_noise_ratio
         self.ANG_NOISE = ang_noise  # rad/s
 
-
     def sample(self) -> pd.DataFrame:
         """
         Sample the robot's linear and angular velocity.
@@ -134,22 +133,46 @@ class WheelEncoder(SensorInterface):
             true_lin_vel = self.robot.latest_lin_vel_cmd
             true_ang_vel = self.robot.latest_ang_vel_cmd
 
-            measurement[f"{self.name}_lin_vel_actual"] = [random.gauss(true_lin_vel, self.LIN_NOISE + self.LIN_NOISE_RATIO * abs(true_lin_vel))]
-            measurement[f"{self.name}_ang_vel_actual"] = [random.gauss(true_ang_vel, self.ANG_NOISE + self.ANG_NOISE_RATIO * abs(true_ang_vel))]
+            measurement[f"{self.name}_lin_vel_actual"] = [
+                random.gauss(
+                    true_lin_vel,
+                    self.LIN_NOISE + self.LIN_NOISE_RATIO * abs(true_lin_vel),
+                )
+            ]
+            measurement[f"{self.name}_ang_vel_actual"] = [
+                random.gauss(
+                    true_ang_vel,
+                    self.ANG_NOISE + self.ANG_NOISE_RATIO * abs(true_ang_vel),
+                )
+            ]
         else:
             true_vx = self.robot.latest_vx_cmd
-            true_vy = self.robot.latest_vy_cmd  
+            true_vy = self.robot.latest_vy_cmd
             true_ang_vel = self.robot.latest_ang_vel_cmd
 
-            measurement[f"{self.name}_vx_actual"] = [random.gauss(true_vx, self.LIN_NOISE + self.LIN_NOISE_RATIO * abs(true_vx))]
-            measurement[f"{self.name}_vy_actual"] = [random.gauss(true_vy, self.LIN_NOISE + self.LIN_NOISE_RATIO * abs(true_vy))]
-            measurement[f"{self.name}_ang_vel_actual"] = [random.gauss(true_ang_vel, self.ANG_NOISE + self.ANG_NOISE_RATIO * abs(true_ang_vel))]
+            measurement[f"{self.name}_vx_actual"] = [
+                random.gauss(
+                    true_vx, self.LIN_NOISE + self.LIN_NOISE_RATIO * abs(true_vx)
+                )
+            ]
+            measurement[f"{self.name}_vy_actual"] = [
+                random.gauss(
+                    true_vy, self.LIN_NOISE + self.LIN_NOISE_RATIO * abs(true_vy)
+                )
+            ]
+            measurement[f"{self.name}_ang_vel_actual"] = [
+                random.gauss(
+                    true_ang_vel,
+                    self.ANG_NOISE + self.ANG_NOISE_RATIO * abs(true_ang_vel),
+                )
+            ]
         return measurement
 
 
 class LandmarkPinger(SensorInterface):
     """
-    This class represents a sensor that measures the range and bearing between the robot and the floating-point landmarks on the map. In practice, this sensor could be a ToF sensor, a node in a network of beacons, or even a camera.
+    This class represents a sensor that measures the range and bearing between the robot and the floating-point landmarks on the map.
+    In practice, this sensor could be a ToF sensor, a node in a network of beacons, or even a camera.
 
     Attributes:
         name: reference identifier
@@ -169,7 +192,7 @@ class LandmarkPinger(SensorInterface):
         max_range=5,
         range_noise=0.5,
         range_prop_noise=0.05,
-        bearing_noise= pi/6,
+        bearing_noise=pi / 6,
     ):
         """
         Initialize an instance of the LandmarkPinger class.
@@ -184,20 +207,18 @@ class LandmarkPinger(SensorInterface):
         self.RANGE_NOISE = range_noise  # meters
         self.RANGE_PROP_NOISE = range_prop_noise
         self.BEARING_NOISE = bearing_noise  # radians
-        
-        # TODO: fix sympy conversion error when using residual for update step, convert sympy expressions to numerical
-        # with lambdify
+
         self.h_x: Matrix = Matrix(
             [
-                [sqrt((x-j)**2 + (y-k)**2)],  # calculation of r (range)
-                [atan2((k-y), (x-j))-theta],  # calculation of phi (bearing)
+                [sqrt((x - j) ** 2 + (y - k) ** 2)],  # calculation of r (range)
+                [atan2((k - y), (j - x)) - theta],  # calculation of phi (bearing)
             ]
         )
 
-        self.H_symbolic: Matrix = self.h_x.jacobian(Matrix([x,y,theta]))
+        self.H_symbolic: Matrix = self.h_x.jacobian(Matrix([x, y, theta]))
 
-        self.h_x_numeric = sympy.lambdify((x, y, theta, j, k), self.h_x, 'numpy')
-        self.H_numeric = sympy.lambdify((x, y, theta, j, k), self.H_symbolic, 'numpy')
+        self.h_x_numeric = sympy.lambdify((x, y, theta, j, k), self.h_x, "numpy")
+        self.H_numeric = sympy.lambdify((x, y, theta, j, k), self.H_symbolic, "numpy")
 
     def sample(self):
         """
@@ -208,31 +229,34 @@ class LandmarkPinger(SensorInterface):
         for lm in landmarks.columns:
             br: BearingRange = landmarks[lm].values[0]
             # calculate combined noise of constant noise + proportional noise
-            total_range_noise = self.RANGE_NOISE + self.RANGE_PROP_NOISE*br.range
+            total_range_noise = self.RANGE_NOISE + self.RANGE_PROP_NOISE * br.range
             # landmarks out of range = infinite range & bearing
             if br.range > self.MAX_RANGE:
-                measurements[f"{self.name}_{br.landmark_id}"] = [(BearingRange(br.landmark_id, inf, inf))]
+                measurements[f"{self.name}_{br.landmark_id}"] = [
+                    (BearingRange(br.landmark_id, inf, inf))
+                ]
             else:
                 noisy_bearing = random.gauss(br.bearing, self.BEARING_NOISE)
                 noisy_range = random.gauss(br.range, total_range_noise)
-                measurements[f"{self.name}_{br.landmark_id}"] = [BearingRange(br.landmark_id, noisy_bearing, noisy_range)]
+                measurements[f"{self.name}_{br.landmark_id}"] = [
+                    BearingRange(br.landmark_id, noisy_bearing, noisy_range)
+                ]
 
         return measurements
-
 
     def R(self, z):
         """
         Estimate variance of a given pinger measurement.
 
         Args:
-            z (ndarray): pinger observation [[range 0], [0 bearing]]
+            z (ndarray): pinger observation [[range], [bearing]]
 
         Returns:
             Sensor noise model for pinger measurement
         """
         z = z.flatten()
-        bearing_stdev = self.BEARING_NOISE
         range_stdev = self.RANGE_NOISE + z[0] * self.RANGE_PROP_NOISE
+        bearing_stdev = self.BEARING_NOISE
         return np.diag([range_stdev, bearing_stdev]) ** 2
 
     def H_eval(self, x_state, lm_id):
@@ -258,7 +282,7 @@ class LandmarkPinger(SensorInterface):
             z: the actual observation from the sensor; [[range], [bearing]]
             x_state: the current state prediction
             lm_id: the ID of the landmark that is giving the observation
-        
+
         Returns:
             residual: z - h(x); [[range residual], [bearing residual]]
         """
@@ -269,7 +293,11 @@ class LandmarkPinger(SensorInterface):
 
         residual = z - hx_eval
 
+        # Wrap bearing residual to [-pi, pi] to handle angle discontinuities
+        residual[1] = (residual[1] + np.pi) % (2 * np.pi) - np.pi
+
         return residual
+
 
 class GPS(SensorInterface):
     """
@@ -306,8 +334,8 @@ class GPS(SensorInterface):
         self.X_NOISE = x_noise
         self.Y_NOISE = y_noise
 
-        self.H = np.array([[1, 0, 0],[0, 1, 0]]) # we dont measure angle
-        self.R = np.array([[self.X_NOISE**2, self.Y_NOISE**2]]).T
+        self.H = np.array([[1, 0, 0], [0, 1, 0]])  # we dont measure angle
+        self.R = np.diag([self.X_NOISE**2, self.Y_NOISE**2])
 
     def sample(self):
         """

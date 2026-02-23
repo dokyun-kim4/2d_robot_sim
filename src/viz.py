@@ -38,8 +38,8 @@ class Visualizer:
 
         with open(env_info_path, "rb") as f:
             self.env_info = pickle.load(f)
-        
-        with open(kalman_log_path ,"rb") as f:
+
+        with open(kalman_log_path, "rb") as f:
             self.kalman_info = pickle.load(f)
 
     def plot_env(self):
@@ -140,7 +140,6 @@ class Visualizer:
         dt = self.env_info["Timestep"]
 
         for row in self.sensor_log.itertuples():
-
             if self.drive_type == DriveType.DIFFERENTIAL:
                 v = row.wheel_encoder_lin_vel_actual
                 w = row.wheel_encoder_ang_vel_actual
@@ -222,10 +221,10 @@ class Visualizer:
                     continue
 
         return pd.DataFrame(poses)
-    
+
     def poses_from_kalman(self):
         poses = []
-        for state, _  in self.kalman_info:
+        for state, _ in self.kalman_info:
             x = state[0]
             y = state[1]
             theta = state[2]
@@ -340,11 +339,7 @@ class Visualizer:
             "orange",
             scatter=True,
         )
-        self.plot_single_trajectory(
-            "Filter",
-            self.poses_from_kalman(),
-            "blue"
-        )
+        self.plot_single_trajectory("Filter", self.poses_from_kalman(), "blue")
         plt.savefig(self.output_path / "dataset_viz.png")
         print("Finished plotting at path: ")
         print(self.output_path / "dataset_viz.png")
@@ -502,6 +497,3 @@ class Visualizer:
         print("Finished animating at path: ")
         print(self.output_path / "trajectory_animation.gif")
         return anim
-
-
-

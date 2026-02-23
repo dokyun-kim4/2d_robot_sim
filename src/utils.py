@@ -9,10 +9,12 @@ import random
 import numpy as np
 from enum import Enum
 
+
 class DriveType(Enum):
     """
     Enum for the robot's drive type. Determines how it moves and what sensor measurements it can take.
     """
+
     DIFFERENTIAL = 0
     TRANSLATIONAL = 1
 
@@ -26,11 +28,14 @@ def wrap_angle(angle: float):
         angle -= 2 * np.pi
     return angle
 
+
 NEAR_ZERO = 1e-6
+
 
 def floating_mod_zero(n1: float, n2: float):
     factor = n1 / n2
     return abs(round(factor, 3) - float(round(factor))) < NEAR_ZERO
+
 
 @dataclass(unsafe_hash=True)
 class Position:

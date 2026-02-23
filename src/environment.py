@@ -32,7 +32,6 @@ class Environment:
         landmarks: list[Landmark],
         lm_max_range: float,
         robot_starting_pose: Pose,
-
     ):
         """
         Initialize an instance of the Environment class.
@@ -64,11 +63,11 @@ class Environment:
         Returns:
             Nothing, but update the robot_pose property at the end
         """
-        dx,dy = self.validate_xy_motion(dx,dy)
+        dx, dy = self.validate_xy_motion(dx, dy)
         self.robot_pose.pos.x += dx
         self.robot_pose.pos.y += dy
         new_theta = self.robot_pose.theta + dtheta
-        self.robot_pose.theta = (new_theta + math.pi) % (2*math.pi) - math.pi
+        self.robot_pose.theta = (new_theta + math.pi) % (2 * math.pi) - math.pi
         self.time += self.DT
 
     def validate_xy_motion(self, dx: float, dy: float) -> tuple[float, float]:
@@ -83,11 +82,22 @@ class Environment:
             dx: change in x position that should be executed
             dy: change in y position that should be executed
         """
-        dx_valid = dx if self.is_valid_position(Position((self.robot_pose.pos.x + dx), self.robot_pose.pos.y)) else 0
-        dy_valid = dy if self.is_valid_position(Position((self.robot_pose.pos.x), self.robot_pose.pos.y + dy)) else 0
+        dx_valid = (
+            dx
+            if self.is_valid_position(
+                Position((self.robot_pose.pos.x + dx), self.robot_pose.pos.y)
+            )
+            else 0
+        )
+        dy_valid = (
+            dy
+            if self.is_valid_position(
+                Position((self.robot_pose.pos.x), self.robot_pose.pos.y + dy)
+            )
+            else 0
+        )
 
         return dx_valid, dy_valid
-        
 
     def is_valid_position(self, position: Position) -> bool:
         """
@@ -104,7 +114,7 @@ class Environment:
 
         # check if inside obstacles
         in_obstacle = any([obs.within_bounds(position) for obs in self.OBSTACLES])
-        
+
         return in_world and not in_obstacle
 
     def get_robot_pose(self) -> Pose:
@@ -119,13 +129,13 @@ class Environment:
         """
         prx_to_lms = pd.DataFrame()
         for lm in self.LANDMARKS:
-
-            x_diff = lm.pos.x - self.robot_pose.pos.x 
+            x_diff = lm.pos.x - self.robot_pose.pos.x
             y_diff = lm.pos.y - self.robot_pose.pos.y
             range = math.sqrt(x_diff**2 + y_diff**2)
+            # Calculate absolute bearing (world frame) to match sensor model
             bearing = math.atan2(y_diff, x_diff) - self.robot_pose.theta
             # normalize angle to (-pi, pi]
-            bearing = (bearing + math.pi) % (2*math.pi) - math.pi
+            bearing = (bearing + math.pi) % (2 * math.pi) - math.pi
             prx_to_lms[f"Landmark{lm.id}"] = [BearingRange(lm.id, bearing, range)]
         return prx_to_lms
 
@@ -136,7 +146,12 @@ class Environment:
         df1 = pd.DataFrame(
             {
                 "Time": [self.time],
-                "RobotPose": [Pose(Position(self.robot_pose.pos.x, self.robot_pose.pos.y), self.robot_pose.theta)],
+                "RobotPose": [
+                    Pose(
+                        Position(self.robot_pose.pos.x, self.robot_pose.pos.y),
+                        self.robot_pose.theta,
+                    )
+                ],
             }
         )
         gt_to_lms = self.get_proximity_to_landmarks()
@@ -156,17 +171,17 @@ class Environment:
         Return static information about the environment, including dimensions, timestep size, locations and dimensions of obstacles, and locations of landmarks.
         """
         info = {
-                "Timestep": self.DT,
-                "Obstacles": [obs.to_dict() for obs in self.OBSTACLES],
-                "Landmarks": [lm.to_dict() for lm in self.LANDMARKS],
-                "Dimensions": self.DIMENSIONS.to_dict(),
-                "Pinger Range": self.lm_max_range
-                }
+            "Timestep": self.DT,
+            "Obstacles": [obs.to_dict() for obs in self.OBSTACLES],
+            "Landmarks": [lm.to_dict() for lm in self.LANDMARKS],
+            "Dimensions": self.DIMENSIONS.to_dict(),
+            "Pinger Range": self.lm_max_range,
+        }
 
         file_path = "output/env_info.pkl"
 
-        with open(file_path, 'wb') as file:
+        with open(file_path, "wb") as file:
             pickle.dump(info, file)
-        
+
         print("Environment info saved to " + file_path)
         return info
