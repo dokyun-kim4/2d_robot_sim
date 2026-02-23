@@ -9,7 +9,6 @@ u = [v_x, v_y, w]
 """
 
 import numpy as np
-import random
 
 from utils import wrap_angle
 
@@ -41,6 +40,12 @@ class KalmanFilter:
         self.F: np.ndarray = np.eye(3)
         self.B: np.ndarray = np.eye(3) * dt
         self.Q: np.ndarray = self.get_Q()
+
+        try:
+            np.linalg.cholesky(self.Q)
+            print("Matrix is Positive Definite")
+        except np.linalg.LinAlgError:
+            print("Matrix is NOT Positive Definite (might be PSD or invalid)")
 
     def predict(self, u: np.ndarray):
         """
@@ -86,7 +91,7 @@ class KalmanFilter:
 
         self.x_state += (K @ y).flatten()
 
-        self.P -= K @ H @ self.P
+        self.P = (np.eye(len(self.x_state)) - K @ H) @ self.P
 
         self.x_state[2] = wrap_angle(
             self.x_state[2]
@@ -97,23 +102,5 @@ class KalmanFilter:
         """
         Generate white noise to apply to the process model after each prediction.
         """
-        stdev = 0.001
-        return np.array(
-            [
-                [
-                    random.gauss(0, stdev),
-                    random.gauss(0, stdev),
-                    random.gauss(0, stdev),
-                ],
-                [
-                    random.gauss(0, stdev),
-                    random.gauss(0, stdev),
-                    random.gauss(0, stdev),
-                ],
-                [
-                    random.gauss(0, stdev),
-                    random.gauss(0, stdev),
-                    random.gauss(0, stdev),
-                ],
-            ]
-        )
+        stdev = 0.01
+        return np.diag([stdev**2, stdev**2, stdev**2])

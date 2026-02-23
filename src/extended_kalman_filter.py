@@ -13,7 +13,6 @@ import sympy as sp
 from sympy import Matrix, cos, sin
 from sympy.abc import x, y, theta, v, w
 from utils import wrap_angle
-import random
 
 
 class ExtendedKalmanFilter:
@@ -23,6 +22,12 @@ class ExtendedKalmanFilter:
         self.x_state: np.ndarray = np.array(prior.flatten(), dtype=np.float64)
         self.P: np.ndarray = np.eye(3)
         self.Q: np.ndarray = self.get_Q()
+
+        try:
+            np.linalg.cholesky(self.Q)
+            print("Matrix is Positive Definite")
+        except np.linalg.LinAlgError:
+            print("Matrix is NOT Positive Definite (might be PSD or invalid)")
 
         # Process model; symbolically defined
         self.f_xu = Matrix(
@@ -90,7 +95,7 @@ class ExtendedKalmanFilter:
 
         S = H @ self.P @ H.T + R
         K = self.P @ H.T @ np.linalg.inv(S)
-        
+
         if y is None:
             # For linear sensors like GPS, compute residual as y = z - Hx
             # If sensor is non-linear use pre-computed y passed in as argument
@@ -106,23 +111,5 @@ class ExtendedKalmanFilter:
         """
         Generate white noise to apply to the process model after each prediction.
         """
-        stdev = 0.001
-        return np.array(
-            [
-                [
-                    random.gauss(0, stdev),
-                    random.gauss(0, stdev),
-                    random.gauss(0, stdev),
-                ],
-                [
-                    random.gauss(0, stdev),
-                    random.gauss(0, stdev),
-                    random.gauss(0, stdev),
-                ],
-                [
-                    random.gauss(0, stdev),
-                    random.gauss(0, stdev),
-                    random.gauss(0, stdev),
-                ],
-            ]
-        )
+        stdev = 0.01
+        return np.diag([stdev**2, stdev**2, stdev**2])
