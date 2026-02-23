@@ -9,146 +9,104 @@ u = [v, w]
 """
 
 import numpy as np
-import sympy
-from sympy.abc import x, y, v, w, R, theta
-from sympy import Matrix, Symbol
-import random
-
+import sympy as sp
+from sympy import Matrix, cos, sin
+from sympy.abc import x, y, theta, v, w
 from utils import wrap_angle
+import random
 
 
 class ExtendedKalmanFilter:
-    """
-    This class implements the Extended Kalman Filter algorithm.
-    """
-
     def __init__(self, dt: float, prior: np.ndarray):
-        """
-        Initialize an Extended Kalman Filter.
+        self.DT: float = dt
+        # Keep x_state as a 1D float array: shape (3,)
+        self.x_state: np.ndarray = np.array(prior.flatten(), dtype=np.float64)
+        self.P: np.ndarray = np.eye(3)
+        self.Q: np.ndarray = self.get_Q()
 
-        A state vector includes the following:
-            x position
-            y position
-            heading
-
-
-        Args:
-            dt: the length of each timestep, in seconds
-            prior: the initial estimates for each state variable-
-        """
-        # TODO: set the timestep size to the given parameter
-        self.DT: float = None
-
-        # TODO: set the state vector to the given prior
-        self.x: np.ndarray = None
-
-        # TODO: set the process model to an identity matrix
-        self.P: np.ndarray = None
-
-        # TODO: define the nonlinear state transition model
-        self.f_xu: Matrix = Matrix(
+        # Process model; symbolically defined
+        self.f_xu = Matrix(
             [
-                [None],  # calculation of x
-                [None],  # calculation of y
-                [None],  # calculation of theta
+                [x + v * cos(theta) * self.DT],
+                [y + v * sin(theta) * self.DT],
+                [theta + w * self.DT],
             ]
         )
 
-        # TODO: define the Jacobian of the motion model symbolically
-        self.F: Matrix = None
+        # Compute Jacobian of f(x,u) symbolically
+        self.F_symbolic = self.f_xu.jacobian(Matrix([x, y, theta]))
 
-        # dictionary that maps Sympy symbols to numerical values. we will use these to substitute values into our symbolic matrices!
-        self.subs: dict[Symbol, float] = {
-            x: self.x_state[0],
-            y: self.x_state[1],
-            theta: self.x_state[2],
-            v: 0,
-            w: 0,
-        }
+        # Convert symbolic f(x,u) and F to numeric functions, avoids numpy arrays that have Sympy Floats in them
+        self.f_xu_numeric = sp.lambdify((x, y, theta, v, w), self.f_xu, "numpy")
+        self.F_numeric = sp.lambdify((x, y, theta, v, w), self.F_symbolic, "numpy")
 
     def predict(self, u: np.ndarray):
         """
-        Predicts the next state vector and its covariance matrix using the state transition matrix and an input control vector. The Kalman Filter uses the following predict equations:
-
-        x_t+1 = f(x,u)
-        P_t+1 = F * P * F.T + Q
-
-        where F is the Jacobian of f(x,u)
+        Predict the next state and covariance based on the current state and control input.
 
         Args:
-            u: the input control vector
+            u: control input, 1D array of shape (2,) with [v, w]
+
+        Returns:
+            x_state: predicted state, 1D array of shape (3,)
+            P: predicted covariance
         """
-        # TODO: set the value of each symbolic substitution to the actual numerical value being tracked by the EKF
-        self.subs[x] = None
-        self.subs[y] = None
-        self.subs[theta] = None
-        self.subs[v] = None
-        self.subs[w] = None
+        u = u.flatten()
+        v_val, w_val = float(u[0]), float(u[1])
+        x_val, y_val, theta_val = self.x_state
 
-        # TODO: evaluate the nonlinear motion model f(x,u) at the subsitution values
-        fxu_eval = None
+        # Execute compiled functions
+        # f_numeric returns a (3,1) array, so we flatten back to (3,)
+        self.x_state = self.f_xu_numeric(
+            x_val, y_val, theta_val, v_val, w_val
+        ).flatten()
+        self.x_state[2] = wrap_angle(
+            self.x_state[2]
+        )  # Ensure theta stays within [-pi, pi]
 
-        # TODO: evaluate the Jacobian matrix F at the substitution values
-        F_eval = None
+        # F_numeric returns a (3,3) Jacobian matrix
+        F_eval = self.F_numeric(x_val, y_val, theta_val, v_val, w_val)
 
-        # TODO: calculate the next state prediction
-        self.x = None
+        # Predict Covariance
+        self.P = F_eval @ self.P @ F_eval.T + self.Q
 
-        # TODO: calculate the next covariance prediction
-        self.P = None
-
-        # return state vector and state covariance
         return self.x_state, self.P
 
     def update(
-        self,
-        H: np.ndarray,
-        R: np.ndarray,
-        z: np.ndarray | None,
-        y: np.ndarray | None,
+        self, H: np.ndarray, R: np.ndarray, z: np.ndarray = None, y: np.ndarray = None
     ):
         """
-        Updates the current state prediction using observations from the environment. The Extended Kalman Filter uses the following update equations:
-
-        x = x + K * y
-        P = P - K * H * P
-
-        Where K and y are given by the following:
-        y = z - h(x) (residual: error between observation and expected observation given estimated state vector)
-        K = P * H.T * inv(S) (Kalman Gain: portion of total uncertainty that is from the prediction)
-        S = H * P * H.T + R (total uncertainty in the system)
-
-        where H is the Jacobian of h(x)
+        Update the state and covariance based on a new measurement.
 
         Args:
-            H: the Jacobian of the nonlinear measurement model, which relates the state space to the measurement space
-            R: the measurement noise model (covariance)
-            y: the residual, which is the error between the measured observation and the observation expected by the predicted state
+            H: measurement Jacobian matrix
+            R: measurement noise covariance
+            z: observation vector
+            y: residual (used for LandmarkPinger where y is pre-computed)
         """
-        # TODO: calculate the total uncertainty in the system
-        S = None
+        # Ensure H and R are numpy arrays of type float64 to avoid issues with Sympy Floats
+        H = np.array(H, dtype=np.float64)
+        R = np.array(R, dtype=np.float64)
 
-        # TODO: calculate the Kalman Gain
-        K = None
+        S = H @ self.P @ H.T + R
+        K = self.P @ H.T @ np.linalg.inv(S)
 
         if y is None:
-            y = z - H @ self.x_state
+            # For linear sensors like GPS, compute residual as y = z - Hx
+            # If sensor is non-linear use pre-computed y passed in as argument
+            y = z - H @ (self.x_state.reshape(-1, 1))
 
-        # TODO: update state vector
-        self.x_state = None
+        self.x_state += (K @ y).flatten()
+        self.x_state[2] = wrap_angle(self.x_state[2])
+        self.P = (np.eye(len(self.x_state)) - K @ H) @ self.P
 
-        # TODO: update process model
-        self.P = None
-
-        # return state vector and process model
         return self.x_state, self.P
 
     def get_Q(self):
         """
         Generate white noise to apply to the process model after each prediction.
         """
-        # TODO: explore different standard deviation values for this function!
-        stdev = 0.1
+        stdev = 0.001
         return np.array(
             [
                 [
