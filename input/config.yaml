@@ -1,0 +1,36 @@
+environment:
+  dimension: [0, 10, 0, 10]
+  runtime: 20 # seconds
+  dt: 0.1 # seconds
+  initial_robot_pose: [0.0, 0.0, 0.6] # x, y, theta
+  lm_max_range: 3.0 # meters
+  landmarks:
+  - [2.0, 2.0] # x, y
+  - [5.0, 5.0]
+  - [8.0, 8.0]
+  obstacles:
+  - [5, 7, 5, 7] # x_min, x_max, y_min, y_max
+  - [0, 4, 6, 8]
+
+robot:
+  drive_type: DIFFERENTIAL
+  Motor:
+    linear_noise: 0.1 # m/s
+    angular_noise: 0.08 # rad/s
+
+sensors:
+  GPS:
+    interval: 2.0
+    x_noise: 0.25 # meters
+    y_noise: 0.25 # meters
+  LandmarkPinger:
+    interval: 0.5
+    bearing_noise: 0.523 # radians
+    range_noise: 0.5 # meters
+    range_prop_noise: 0.05
+  WheelEncoder:
+    interval: 0.1
+    linear_noise: 0.05 # m/s
+    linear_noise_ratio: 0.01 # m/s
+    angular_noise: 0.1
+    angular_noise_ratio: 0.1
