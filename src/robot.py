@@ -22,14 +22,14 @@ class Robot:
         sensors: list of all robot sensors
     """
 
-    def __init__(self, env: Environment, sensor_info: dict, robot_info: dict):
+    def __init__(self, env: Environment, sensor_info: dict, robot_info: dict, drive_type: DriveType):
         """
         Initialize an instance of the Robot class.
 
         Args:
             env: the environment this robot is operating in
         """
-        self.drive_type = DriveType[robot_info["drive_type"]]
+        self.drive_type = drive_type
 
         mtr_config = robot_info["Motor"]
         self.MTR_NOISE_LINEAR = mtr_config["linear_noise"]

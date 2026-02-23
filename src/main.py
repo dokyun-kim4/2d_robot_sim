@@ -18,6 +18,13 @@ import numpy as np
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+    
+    parser.add_argument(
+        "--input_commands",
+        type=Path,
+        default=Path("./input/diff_vel_cmd.csv"),
+        help="Path to the CSV file containing motor commands",
+    )
 
     parser.add_argument(
         "--config",
@@ -27,18 +34,21 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
+        "--drive_type",
+        type=int,
+        choices=[0, 1],
+        # 0 for differential drive, 1 for translational drive
+        required=True,
+    )
+
+    parser.add_argument(
         "--output_dir",
         type=Path,
         default=Path("./output/"),
         help="Directory to save output files and visualizations",
     )
 
-    parser.add_argument(
-        "--input_commands",
-        type=Path,
-        default=Path("./input/diff_vel_cmd.csv"),
-        help="Path to the CSV file containing motor commands",
-    )
+
 
     args = parser.parse_args()
     if args.config.exists():
@@ -77,7 +87,7 @@ if __name__ == "__main__":
     )
 
     # set up the robot
-    robot = Robot(env, sensor_config, robot_config)
+    robot = Robot(env, sensor_config, robot_config, drive_type = DriveType(args.drive_type))
 
     if robot.drive_type == DriveType.TRANSLATIONAL:
         kf = KalmanFilter(
@@ -136,31 +146,31 @@ if __name__ == "__main__":
                 [ground_truth_history, env.take_state_snapshot()], ignore_index=True
             )
 
-            crnt_sensor_measurement = robot.take_sensor_measurements()
+            crnt_sensor_data = robot.take_sensor_measurements()
             sensor_data_history = pd.concat(
-                [sensor_data_history, crnt_sensor_measurement], ignore_index=True
+                [sensor_data_history, crnt_sensor_data], ignore_index=True
             )
 
             if robot.drive_type == DriveType.DIFFERENTIAL:
                 u = np.array(
                     [
-                        crnt_sensor_measurement["wheel_encoder_lin_vel_actual"],
-                        crnt_sensor_measurement["wheel_encoder_ang_vel_actual"],
+                        crnt_sensor_data["wheel_encoder_lin_vel_actual"],
+                        crnt_sensor_data["wheel_encoder_ang_vel_actual"],
                     ]
                 )
 
             else:
                 u = np.array(
                     [
-                        crnt_sensor_measurement["wheel_encoder_vx_actual"],
-                        crnt_sensor_measurement["wheel_encoder_vy_actual"],
-                        crnt_sensor_measurement["wheel_encoder_ang_vel_actual"],
+                        crnt_sensor_data["wheel_encoder_vx_actual"],
+                        crnt_sensor_data["wheel_encoder_vy_actual"],
+                        crnt_sensor_data["wheel_encoder_ang_vel_actual"],
                     ]
                 )
             x, P = kf.predict(u)
 
-            if "GPS" in crnt_sensor_measurement.columns:
-                gps_data = crnt_sensor_measurement["GPS"].iloc[0]
+            if "GPS" in crnt_sensor_data.columns:
+                gps_data = crnt_sensor_data["GPS"].iloc[0]
                 z = np.array([[gps_data.x, gps_data.y]]).T
                 gps = next((inst for inst in robot.sensors if inst.name == "GPS"), None)
 
@@ -172,16 +182,12 @@ if __name__ == "__main__":
             # Only use landmark measurement for EKF since it is nonlinear
             if robot.drive_type == DriveType.DIFFERENTIAL:
                 # First filter out all landmark pinger measurements
-                landmarks = crnt_sensor_measurement.filter(like="landmark_pinger").iloc[
-                    0
-                ]
+                landmarks = crnt_sensor_data.filter(like="landmark_pinger").iloc[0]
 
                 # Iterate through all landmark pinger measurements and update EKF
                 for lm_name, val in landmarks.items():
                     lm_id = int(lm_name.strip("_")[-1])
-
                     z = np.array([[val.range, val.bearing]]).T
-                    print(z)
                     # First check if measurement is valid (ex: not inf when out of range)
                     if np.isinf(z).any():
                         continue
@@ -195,6 +201,7 @@ if __name__ == "__main__":
                         ),
                         None,
                     )
+                    print("Updating with landmark measurement from Landmark", lm_id)
                     x, P = kf.update(
                         H=lm_pinger.H_eval(x, lm_id),
                         R=lm_pinger.R(z),
