@@ -54,7 +54,9 @@ class KalmanFilter:
         """
 
         self.x_state = (self.F @ self.x_state.reshape(-1, 1) + self.B @ u).flatten()
-        self.x_state[2] = wrap_angle(self.x_state[2])  # Ensure theta stays within [-pi, pi]
+        self.x_state[2] = wrap_angle(
+            self.x_state[2]
+        )  # Ensure theta stays within [-pi, pi]
         self.P = self.F @ self.P @ self.F.T + self.Q
 
         return self.x_state, self.P
@@ -80,21 +82,22 @@ class KalmanFilter:
 
         K = self.P @ H.T @ np.linalg.inv(S)
 
-        print(z.shape, H.shape, self.x_state.shape)
         y = z - H @ self.x_state.reshape(-1, 1)
 
         self.x_state += (K @ y).flatten()
 
         self.P -= K @ H @ self.P
 
-        self.x_state[2] = wrap_angle(self.x_state[2])  # Ensure theta stays within [-pi, pi]
+        self.x_state[2] = wrap_angle(
+            self.x_state[2]
+        )  # Ensure theta stays within [-pi, pi]
         return self.x_state, self.P
 
     def get_Q(self):
         """
         Generate white noise to apply to the process model after each prediction.
         """
-        stdev = 0.1
+        stdev = 0.001
         return np.array(
             [
                 [
