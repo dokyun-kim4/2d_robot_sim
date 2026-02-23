@@ -90,7 +90,7 @@ class ExtendedKalmanFilter:
 
         S = H @ self.P @ H.T + R
         K = self.P @ H.T @ np.linalg.inv(S)
-
+        
         if y is None:
             # For linear sensors like GPS, compute residual as y = z - Hx
             # If sensor is non-linear use pre-computed y passed in as argument
