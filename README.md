@@ -37,8 +37,8 @@ This repository contains a 2D simulation environment used in the _Probabilistic 
 
    ```bash
     # Using a venv is recommended
-    python -m venv venv
-    source venv/bin/activate  # On Windows, use `venv\Scripts\activate`
+    python -m venv .venv
+    source .venv/bin/activate  # On Windows, use `venv\Scripts\activate`
     pip install .
 
     # OR using uv
