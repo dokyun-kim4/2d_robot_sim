@@ -25,7 +25,7 @@ This repository contains a 2D simulation environment used in the _Probabilistic 
 1. Clone the repository and navigate to the project directory:
 
    ```bash
-    git clone <repository_url>
+    git clone https://github.com/dokyun-kim4/2d_robot_sim.git
     cd 2d_robot_sim
    ```
 2. Switch to the `week1` branch:
