@@ -178,7 +178,7 @@ class LandmarkPinger(SensorInterface):
         name: reference identifier
         robot (Robot): reference robot
         interval (float): period between measurements
-        MAX_RANGE (int): maximum distance from a beacon for it to be visible
+        MAX_RANGE (float): maximum distance from a beacon for it to be visible
         RANGE_NOISE (float): absolute noise for range stdev
         RANGE_PROP_NOISE (float): proportional noise for range stdev
         BEARING_NOISE (float): absolute noise for bearing stdev
@@ -189,7 +189,7 @@ class LandmarkPinger(SensorInterface):
         robot,
         name="landmark_pinger",
         interval=1.0,
-        max_range=5,
+        max_range=5.0,
         range_noise=0.5,
         range_prop_noise=0.05,
         bearing_noise=pi / 6,
@@ -346,3 +346,44 @@ class GPS(SensorInterface):
         y_noisy = random.gauss(gt_pose.pos.y, self.Y_NOISE)
 
         return pd.DataFrame({self.name: [Position(x_noisy, y_noisy)]})
+
+class InsituInstrument(SensorInterface):
+    """
+    This class represents a sensor that measures from a continuous field in an environment.
+
+    Attributes:
+        name (str): reference identifier
+        robot (Robot): reference robot
+        interval (float): period between measurements
+        noise (float): noise of a scalar measurement
+    """
+
+    def __init__(
+        self,
+        robot,
+        name = "InsituInstrument",
+        interval = 0.5,
+        noise = 0.001,
+    ):
+        """
+        Initialize an instance of the InsituInstrument class.
+
+        Args:
+            name (str): reference identifier
+            robot (Robot): reference robot
+            interval (float): period between measurements
+            noise (float): noise of a scalar measurement
+        """
+        super().__init__(name, robot, interval)
+        self.noise = noise  # noise character of the sensor
+
+    def sample(self) -> pd.DataFrame:
+        """
+        Noisily measure the in situ status of the continuous field.
+
+        Returns:
+            A dictionary containing the noisy field measurement.
+        """
+        field_measurement = self.robot.env.get_gt_field_value()
+        noisy_measurement = random.gauss(field_measurement, self.noise)
+        return pd.DataFrame({self.name: noisy_measurement})

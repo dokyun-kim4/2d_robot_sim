@@ -8,7 +8,7 @@ import argparse
 import csv
 import yaml
 from pathlib import Path
-from environment import Environment
+from environment import Environment, Field
 from robot import Robot
 from kalman_filter import KalmanFilter
 from extended_kalman_filter import ExtendedKalmanFilter
@@ -64,15 +64,25 @@ if __name__ == "__main__":
     dimensions = Bounds(*env_config["dimension"])
     dt = env_config["dt"]
     obstacles = [Bounds(*obs) for obs in env_config["obstacles"]]
+    
     landmarks = [
         Landmark(Position(*pos), i) for i, pos in enumerate(env_config["landmarks"])
     ]
     lm_max_range = env_config["lm_max_range"]
+
     initial_robot_pose = Pose(
         Position(
-            env_config["initial_robot_pose"][0], env_config["initial_robot_pose"][1]
+            env_config["initial_robot_pose"][0],
+            env_config["initial_robot_pose"][1]
         ),
         env_config["initial_robot_pose"][2],
+    )
+
+    field = Field(
+        dimensions,
+        env_config["field"]["variance"],
+        env_config["field"]["lengthscale"],
+        env_config["field"]["random_seed"]
     )
 
     env = Environment(
@@ -80,6 +90,7 @@ if __name__ == "__main__":
         dt,
         obstacles,
         landmarks,
+        field,
         lm_max_range,
         initial_robot_pose,
     )
@@ -132,6 +143,7 @@ if __name__ == "__main__":
     output_ground_truth_filepath = args.output_dir / "ground_truth.pkl"
     output_sensor_data_filepath = args.output_dir / "sensor_data.pkl"
     output_kalman_filter_filepath = args.output_dir / "kalman_filter.pkl"
+    output_sensor_info_filepath = args.output_dir / "sensor_info.pkl"
 
     # open up the instructions, pop the first
     with open(input_commands_filepath, "r") as cmd:
@@ -174,10 +186,11 @@ if __name__ == "__main__":
                 z = np.array([[gps_data.x, gps_data.y]]).T
                 gps = next((inst for inst in robot.sensors if inst.name == "GPS"), None)
 
-                if robot.drive_type == DriveType.DIFFERENTIAL:
-                    kf.update(H=gps.H, R=gps.R, z=z, y=None)
-                else:
-                    kf.update(H=gps.H, R=gps.R, z=z)
+                if gps is not None:
+                    if robot.drive_type == DriveType.DIFFERENTIAL:
+                        kf.update(H=gps.H, R=gps.R, z=z, y=None)
+                    else:
+                        kf.update(H=gps.H, R=gps.R, z=z)
 
             # Only use landmark measurement for EKF since it is nonlinear
             if robot.drive_type == DriveType.DIFFERENTIAL:
@@ -186,7 +199,7 @@ if __name__ == "__main__":
 
                 # Iterate through all landmark pinger measurements and update EKF
                 for lm_name, val in landmarks.items():
-                    lm_id = int(lm_name.strip("_")[-1])
+                    lm_id = int(str(lm_name).strip("_")[-1])
                     z = np.array([[val.range, val.bearing]]).T
                     # First check if measurement is valid (ex: not inf when out of range)
                     if np.isinf(z).any():
@@ -201,15 +214,23 @@ if __name__ == "__main__":
                         ),
                         None,
                     )
-
-                    x, P = kf.update(
-                        H=lm_pinger.H_eval(x, lm_id),
-                        R=lm_pinger.R(z),
-                        z=z,
-                        y=lm_pinger.y(z, x, lm_id),
-                    )
+                    
+                    if lm_pinger is not None:
+                        x, P = kf.update(
+                            H=lm_pinger.H_eval(x, lm_id),
+                            R=lm_pinger.R(z),
+                            z=z,
+                            y=lm_pinger.y(z, x, lm_id),
+                        )
 
             kalman_filter_history.append((kf.x_state, kf.P))
+
+            # Update the robot's belief
+            try:
+                robot.update_belief(crnt_sensor_data["InsituInstrument"].values,
+                                    robot.env.robot_pose)
+            except:
+                pass  # no measurement available to use
 
             if not terminal and float(next_cmd[0]) <= step * env.DT:
                 # pocket prev vel to run until next vel flip
@@ -229,6 +250,7 @@ if __name__ == "__main__":
     pickle.dump(ground_truth_history, open(output_ground_truth_filepath, "wb"))
     pickle.dump(sensor_data_history, open(output_sensor_data_filepath, "wb"))
     pickle.dump(kalman_filter_history, open(output_kalman_filter_filepath, "wb"))
+    pickle.dump(robot.sensor_info(), open(output_sensor_info_filepath, "wb"))
     env.get_environment_info()
 
     viz = Visualizer(Path("./output/"), drive_type=robot.drive_type)

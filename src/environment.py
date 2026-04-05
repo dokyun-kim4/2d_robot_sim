@@ -7,10 +7,73 @@ Critically, the environment tracks the robot's state. In this case, the robot's 
 """
 
 import pandas as pd
+import numpy as np
+from sklearn.gaussian_process import GaussianProcessRegressor
+from sklearn.gaussian_process.kernels import RBF, ConstantKernel
+from itertools import product
 import pickle
 import math
 from utils import Position, Pose, Bounds, Landmark, BearingRange
 
+class Field:
+    """Creates a continuous function that can be sampled.
+    
+    Attributes:
+        DIMS (Bounds): the four corners of the environment
+        variance (float): the variance of the GP kernel
+        lengthscale (float): the lengthscale of the GP kernel
+        random_seed (int): random seed for setting world draw
+    """
+    def __init__(
+        self,
+        dimensions: Bounds,
+        variance: float = 0.1,
+        lengthscale: float = 1.0,
+        random_seed: int = 10,
+    ):
+        """
+        Initialize the continuous field in an environment.
+
+        Args:
+            dimensions (Bounds): the four corners of the environment
+            variance (float): the variance of the GP kernel
+            lengthscale (float): the lengthscale of the GP kernel
+            random_seed (int): random seed for setting consistent world draw
+        """
+        self.DIMS = dimensions
+        self.variance = variance
+        self.lengthscale = lengthscale
+        self.random_seed = random_seed
+        self._initialize_field()
+
+    def _initialize_field(self):
+        """
+        Initializes the continuous field in an environment.
+
+        The field is represented as a Gaussian Process with an RBF kernel. The field is bounded to a 20 x 20 grid.
+        We sample one point in the field, and then fit the GP to this initial field.
+        This allows us to have a continuous function that can be sampled at any point in the environment.
+        """
+        self.kernel = ConstantKernel(1.0, (1e-3, 1e-3)) * RBF([self.lengthscale, self.lengthscale], (self.variance, 100*self.variance))
+        gp = GaussianProcessRegressor(kernel=self.kernel, n_restarts_optimizer=15, random_state=self.random_seed)
+        x, y = np.linspace(self.DIMS.x_min, self.DIMS.x_max, 20), np.linspace(self.DIMS.y_min, self.DIMS.y_max, 20)
+
+        # Get all combinations of x and y coordinates
+        M = np.array(list(product(x, y)))
+
+        # Sample one point in the field and fit the GP to this initial field
+        init_sample = gp.sample_y(M, 1, random_state=self.random_seed)
+        gp.fit(M, init_sample)
+        self.field = gp
+
+    def info(self) -> dict:
+        """
+        Returns the current state of the field in addition to its parameters
+        """
+        return {"Variance": self.variance,
+                "Lengthscale": self.lengthscale,
+                "Random Seed": self.random_seed,
+                "Model": self.field}
 
 class Environment:
     """
@@ -30,6 +93,7 @@ class Environment:
         dt: float,
         obstacles: list[Bounds],
         landmarks: list[Landmark],
+        field: Field,
         lm_max_range: float,
         robot_starting_pose: Pose,
     ):
@@ -41,14 +105,18 @@ class Environment:
             dt: the length of each timestep, in seconds
             obstacles: a list of obstacles
             landmarks: a list of landmarks
+            field: a continous function representing the sampling environment
+            lm_max_range: maximum range of landmark pingers
             robot_starting_pose: the initial position and heading of the robot
+            
         """
         self.DIMENSIONS = dimensions
         self.DT = dt
         self.time = 0
-        self.lm_max_range = lm_max_range
         self.OBSTACLES = obstacles
         self.LANDMARKS = landmarks
+        self.lm_max_range = lm_max_range
+        self.continuous_field = field
         self.robot_pose = robot_starting_pose
 
     def robot_step(self, dx: float, dy: float, dtheta: float) -> None:
@@ -136,7 +204,7 @@ class Environment:
             bearing = math.atan2(y_diff, x_diff) - self.robot_pose.theta
             # normalize angle to (-pi, pi]
             bearing = (bearing + math.pi) % (2 * math.pi) - math.pi
-            prx_to_lms[f"Landmark{lm.id}"] = [BearingRange(lm.id, bearing, range)]
+            prx_to_lms[f"Landmark{lm.id}"] = [BearingRange(lm.id, bearing, range)] # type: ignore
         return prx_to_lms
 
     def take_state_snapshot(self):
@@ -166,6 +234,14 @@ class Environment:
             right_index=True,
         )
 
+    def get_gt_field_value(self) -> float:
+        """
+        Returns the ground truth field measurement of the robot at the current ground truth pose.
+        """
+        return self.continuous_field.field.predict(
+            np.asarray((self.robot_pose.pos.x, self.robot_pose.pos.y)).reshape(1,-1)
+        ) # type: ignore
+
     def get_environment_info(self):
         """
         Return static information about the environment, including dimensions, timestep size, locations and dimensions of obstacles, and locations of landmarks.
@@ -176,6 +252,7 @@ class Environment:
             "Landmarks": [lm.to_dict() for lm in self.LANDMARKS],
             "Dimensions": self.DIMENSIONS.to_dict(),
             "Pinger Range": self.lm_max_range,
+            "Field": self.continuous_field.info()
         }
 
         file_path = "output/env_info.pkl"
