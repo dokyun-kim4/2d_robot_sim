@@ -50,11 +50,11 @@ class Field:
         """
         Initializes the continuous field in an environment.
 
-        The field is represented as a Gaussian Process with an RBF kernel. The field is bounded to a 20 x 20 grid.
+        The field is represented as a Gaussian Process with an RBF kernel.
         We sample one point in the field, and then fit the GP to this initial field.
         This allows us to have a continuous function that can be sampled at any point in the environment.
         """
-        self.kernel = ConstantKernel(1.0, (1e-3, 1e-3)) * RBF([self.lengthscale, self.lengthscale], (self.variance, 100*self.variance))
+        self.kernel = ConstantKernel(1.0, (1e-5, 1e-5)) * RBF([self.lengthscale, self.lengthscale], (self.variance, 100*self.variance))
         gp = GaussianProcessRegressor(kernel=self.kernel, n_restarts_optimizer=15, random_state=self.random_seed)
         x, y = np.linspace(self.DIMS.x_min, self.DIMS.x_max, 20), np.linspace(self.DIMS.y_min, self.DIMS.y_max, 20)
 
