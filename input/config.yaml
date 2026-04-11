@@ -1,13 +1,13 @@
 environment:
   dimension: [0, 10, 0, 10]
-  runtime: 20 # seconds
+  runtime: 30 # seconds
   dt: 0.1 # seconds
   initial_robot_pose: [0.0, 0.0, 0.6] # x, y, theta
   lm_max_range: 3.0 # meters
   field:
     variance: 0.1
     lengthscale: 3.0
-    random_seed: 5
+    random_seed: 8
   landmarks:
   - [2.0, 2.0] # x, y
   - [5.0, 5.0]
@@ -43,3 +43,13 @@ sensors:
   InsituInstrument:
     interval: 0.5
     noise: 0.001
+
+action:
+  action_step: 5.0  # duration of an action
+  num_actions: 10 # discretization of the action space
+  vel1_range: [0.7, 0.75]  # m/s linear velocity
+  vel2_range: [-0.5, 0.5]  # rad/s angular velocity
+
+reward:
+  name: "ucb"
+  alpha: 9.0

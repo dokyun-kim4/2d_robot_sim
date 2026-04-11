@@ -7,6 +7,8 @@ import pickle
 from pathlib import Path
 from utils import Pose, Landmark, DriveType
 from itertools import product
+import copy
+from reward import Reward
 
 
 class Visualizer:
@@ -26,6 +28,8 @@ class Visualizer:
         self.drive_type = drive_type
         gt_log_path = output_path / "ground_truth.pkl"
         sensor_log_path = output_path / "sensor_data.pkl"
+        action_info_path = output_path / "action_info.pkl"
+        reward_info_path = output_path / "reward_info.pkl"
         env_info_path = output_path / "env_info.pkl"
         sensor_info_path = output_path / "sensor_info.pkl"
         kalman_log_path = output_path / "kalman_filter.pkl"
@@ -41,6 +45,12 @@ class Visualizer:
         with open(sensor_info_path, "rb") as f:
             self.sensor_info = pickle.load(f)
             self.sensor_info.to_csv("sensor_info.csv")
+
+        with open(action_info_path, "rb") as f:
+            self.action_info = pickle.load(f)
+
+        with open(reward_info_path, "rb") as f:
+            self.reward_info = pickle.load(f)
 
         with open(env_info_path, "rb") as f:
             self.env_info = pickle.load(f)
@@ -177,15 +187,24 @@ class Visualizer:
         M = np.array(list(product(x,y)))
         
         c_sample, std_dev = obs_model.predict(M, return_std=True)
-        ax.contourf(X, Y, c_sample.reshape(10,10).T, 10,
+        ax.contourf(X, Y, c_sample.reshape(10,10).T, 20,
                     vmin=np.nanmin(measurements), vmax=np.nanmax(measurements))
         ax.scatter(measurement_positions[:,0], measurement_positions[:,1], c=measurements, cmap="viridis",
                    s=200, lw=1.5, edgecolors='k', vmin=np.nanmin(measurements), vmax=np.nanmax(measurements))
         
-        ax_inset = ax.inset_axes([0.8, 0.05, 0.3, 0.3])
-        ax_inset.contourf(X, Y, std_dev.reshape(10,10).T, 10)
+        ax_inset = ax.inset_axes([0.8, 0.37, 0.3, 0.3])
+        ax_inset.contourf(X, Y, std_dev.reshape(10,10).T, 20)
         ax_inset.scatter(measurement_positions[:,0], measurement_positions[:,1], s=1, lw=1.5, edgecolors='k')
         ax_inset.set_title("Belief Uncertainty")
+
+        reward_object = Reward(self.reward_info["Reward Params"])
+        reward_func = reward_object.reward
+        c_sample, c_std = obs_model.predict(M, return_std=True)
+        computed_reward = reward_func(c_sample, np.sqrt(c_std))
+
+        ax_inset = ax.inset_axes([0.8, 0.0, 0.3, 0.3])
+        ax_inset.contourf(X, Y, computed_reward.reshape(10,10).T, 20)
+        ax_inset.set_title("Reward Field")
 
         # set up env boundaries
         width = dims["x_max"] - dims["x_min"]
@@ -468,7 +487,7 @@ class Visualizer:
             "orange",
             scatter=True,
         )
-        self.plot_single_trajectory("Filter", self.poses_from_kalman(), "blue")
+        # self.plot_single_trajectory("Filter", self.poses_from_kalman(), "blue")
         plt.savefig(self.output_path / "dataset_viz.png")
         print("Finished plotting at path: ")
         print(self.output_path / "dataset_viz.png")

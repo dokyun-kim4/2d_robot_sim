@@ -14,6 +14,7 @@ from environment import Environment
 from sensors import SensorInterface, WheelEncoder, GPS, LandmarkPinger, InsituInstrument
 from utils import NEAR_ZERO, floating_mod_zero, DriveType
 from enum import Enum
+import copy
 
 
 class Robot:
@@ -93,7 +94,7 @@ class Robot:
             )
         ]
 
-        self.kernel = self.env.continuous_field.kernel  # the same as the environment kernel
+        self.kernel = copy.deepcopy(self.env.continuous_field.kernel)  # the same as the environment kernel
         self.belief = GaussianProcessRegressor(kernel=self.kernel,
                                                 n_restarts_optimizer=15,
                                                 random_state=self.env.continuous_field.random_seed)
